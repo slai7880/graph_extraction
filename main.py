@@ -14,7 +14,8 @@ At first the program asks the user to provide the path of the image
 as well as that of an example of the vertices. The user must crop the
 example from the original image with some tool before using this program.
 If the path cannot be understood or the file does not exist, the program
-will keep asking the user to provide a correct one.
+will keep asking the user to provide a correct one. The sample image is graph6.png
+and the sample node piece is node_sample.png.
 
 2. Locating Vertices
 Next the program will ask the user to provide the number of vertices
