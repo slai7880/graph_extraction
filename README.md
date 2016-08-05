@@ -4,16 +4,19 @@ The main tool which I use to manipulate images is OpenCV and the initial program
 
 The algorithm, developed under the help from Adrian Rosebrock at PyImageRedearch,  is rather simple, and the steps are listed below:
 1. Locate the vertices.
+
 2. Find the edges.
 
 The main approaches at each step are illustrated below.
 
 1. Locating the Vertices
+
 	The main idea is multi-scale template matching(http://www.pyimagesearch.com/2015/01/26/multi-scale-template-matching-using-python-opencv/). The user must crop the image for an example of the vertices before executing the program. When the program accepts the image as well as the template, it will attempt to create a window on the image and slide through the entire image, trying to find a piece that is the most similar to the given template. Due to the limit of this algorithm, it cannot be guaranteed that all the vertices are correctly identified. Therefore the program will keep asking the user to provide the number of remaining unlocated vertices on the image untill all are found, and then allow the user to remove all the false vertices.
 
 	It is possible that in the original image all the vertices are labeled with a sequence of numbers. Recognizing text is another deep topic in computer vision, so I did not implement any feature that can do this job for the user. Instead, for now I can only ask the user to correct the order of the vertices.
 
 2. Detecting Edges
+
 	Although it is suggested to use canny edge detector followed by contour extraction function to obtain the edges, the vertices might also be recognized as part of the edges if the two approaches are directly applied. Once the location of each vertex is obtained , we can first create a binary copy of the original image, and put a box filled with the background color at each vertex so that the vertices are hiddden and all the edges are separated from the vertices. The findContours function will then detect all the separated line segment left on the image, which forms a set of edges.
 
 	Note that the fincContours function only returns a list of "contours", that is, a list of pixels that surround each line segment. Meanwhile, fortunately the function tends to put the pixel near the corner as the first element in each returned list, we then can approximate the end points of each line segment and find out which vertices the endpoints are likely to connect. In a more detailed way of saying, each list of pixels of contours will be examined and the program will attempt to get the end point of the corresponding edge, at last the program will examine all of these endpoints and determine if one is close enough to any vertex.
