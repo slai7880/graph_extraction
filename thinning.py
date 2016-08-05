@@ -1,5 +1,11 @@
-# This program thins a given binary image using zhang-suen algorithm.
+'''
+thinning.py
+Sha Lai
+8/4/2016
 
+This sub-program implements zhang-seun's image thinning algorithm.
+
+'''
 import numpy
 import sys
 
