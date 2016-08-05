@@ -3,6 +3,7 @@ This project aims at helping the user to extract a mathematical graph from a dig
 The main tool which I use to manipulate images is OpenCV and the initial program is written with python 3.
 
 The algorithm, developed under the help from Adrian Rosebrock at PyImageRedearch,  is rather simple, and the steps are listed below:
+
 1. Locate the vertices.
 
 2. Find the edges.
