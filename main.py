@@ -293,14 +293,15 @@ def find_vertices(graph_display, graph_work, template, tW, tH):
                   valid = False
                   user_input = ''
          
-      if not user_input == DONE:
+      if user_input != DONE:
          index_remove = user_input.split()
          for i in index_remove:
             nodes[int(i) - BASE] = PLACE_HOLDER
          nodes = [element for element in nodes if element != PLACE_HOLDER]
-         for node in nodes:
-            nodes_center.append(node)
          user_input = ''
+   for node in nodes:
+      nodes_center.append((int(node[0] + tW / 2), int(node[1] + tH / 2)))
+      #nodes_center.append(node)
    print("Current vertices:")
    print_list(nodes)
    return nodes, nodes_center
@@ -403,20 +404,33 @@ def extract_contours(graph_gray, nodes, tW, tH, break_point, thin = True):
       # Places a block at each node.
       cv2.rectangle(graph_gray_bin, upper_left, bottom_right, \
          (255, 255, 225), cv2.FILLED)
-      
+   
+   
    # Performs image thinning if neccessary.
+   cv2.imshow("graph_gray_bin", graph_gray_bin)
+   cv2.waitKey(1)
    ret, graph_gray_bin = cv2.threshold(graph_gray_bin, break_point, 1, \
       cv2.THRESH_BINARY_INV)
    if thin:
       graph_gray_bin = thinning(graph_gray_bin)
    ret, result = cv2.threshold(graph_gray_bin, 0, 255, cv2.THRESH_BINARY)
+   #cv2.imshow("result", result)
+   #cv2.waitKey(1)
+   
+   '''
+   # Use a simple way.
+   high_thresh, thresh_im = cv2.threshold(graph_gray_bin.copy(), 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+   result = cv2.Canny(graph_gray_bin, high_thresh, high_thresh)
+   '''
    
    # Extracts contours.
    print("Extracting contours....")
    contours_display, contours, hierarchy = cv2.findContours(result, \
       cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-   cv2.drawContours(contours_display, contours, -1, (0, 255, 0), 3)
+   cv2.drawContours(contours_display, contours, 1, (255, 255, 255), 3)
    print("Number of contours detected: " + str(len(contours)))
+   #cv2.imshow("contouts", contours_display)
+   #cv2.waitKey(1)
    return contours
 
 # From the contours extracts all edges. For each contour, select the first and
@@ -428,7 +442,7 @@ def extract_contours(graph_gray, nodes, tW, tH, break_point, thin = True):
 # the tolerance and is the smallest compared with the rest.
 def extract_edges(contours, nodes_center, radius, graph):
    print("Retrieving graph data....")
-   E = []
+   E = [] # where the outputs are stored
    minimum = []
    edge_pos = []
    edge_to_contour = {}
@@ -477,6 +491,8 @@ def extract_edges(contours, nodes_center, radius, graph):
             FONT_COLOR, FONT_THICKNESS, cv2.LINE_AA)
          cv2.imshow("Edges with Labels", edges_display)
          cv2.waitKey(1)
+         
+         
       valid = False
       while valid == False:
          while user_input == '':
@@ -519,7 +535,7 @@ def extract_edges(contours, nodes_center, radius, graph):
 
 if __name__ == "__main__":
    # Obtain the files.
-   graph, graph_gray, template, break_point = get_images()
+   graph, graph_gray, template, break_point = get_images(True)
    
    # Process the template.
    template, (tH, tW), radius = process_template(template, break_point)
@@ -536,4 +552,3 @@ if __name__ == "__main__":
    E = extract_edges(contours, nodes_center, radius, graph)
 
    halt = input("HALT (press enter to end)")
-   

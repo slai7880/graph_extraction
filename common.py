@@ -35,19 +35,24 @@ BASE = 1
 SCALE_PERCENTAGE = 0.6
 
 # This constant is the threshold factor of the ditance between an end point of an edge and the
-# center of a node, a value greater than 1 is recommended.
-TOLERANCE_FACTOR = 1.5
+# center of a node, a value greater than 1 is recommended. Feel free to increase this value if
+# there exists at least one undetected edge.
+TOLERANCE_FACTOR = 1.6
 
 # The following two constants is relavant to how to distinguish the background and the contents.
 # If METHOD is 'STATIC' then the value of THRESHOLD will serve as a break point. Otherwise the
 # program will use the most common color on the image to be the background color.
 METHOD = 'DYNAMIC'
+#METHOD = 'STATIC'
 THRESHOLD = 127
 
 # Indicating the font properties of the numbers displayed on the image.
-FONT_COLOR = (0, 255, 0)
+FONT_COLOR = (0, 0, 255)
 FONT_THICKNESS = 1 # must be an integer
 FONT_SIZE = 0.5
 
 # Indicating the label(rectangle) properties.
 RECT_COLOR = (0, 0, 255)
+
+OUTPUT_FONT = 8
+GRAPH_SIZE_MAX = (1024, 768)
