@@ -2,7 +2,7 @@ This project aims at helping the user to extract a mathematical graph from a dig
 
 The programs are written in Python 3.5, along with additional packages including OpenCV, NumPy, SciPy, and PyQT which is used to create a better GUI.
 
-The description of the ideas behind is put in main.py. Here I want to provide an introduction about how to use my programs.
+The description of the ideas behind is put in graph_extraction.py. Here I want to provide an introduction about how to use my programs.
 
 There are two executable files in the directory. One is main.py and the other is graph_extraction_ui.py. The later is merely a variation with a GUI of the former and it is still under development. So I will focus on describing how to use the first one.
 
