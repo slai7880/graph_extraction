@@ -1,30 +1,40 @@
-This project aims at helping the user to extract a mathematical graph from a digital image using python. A graph, usually denoted as G = (V, E), is widely used across various fields. There are multiple ways to store a graph in a computer, for example, a list. Meanwhile there are many applications that are capable of presenting a graph in a picture in a fairly clear way. However I have not yet found any published software that can do the reverse work, that is, recognize a graph from an image and store the data inside. Due to the variety of graph images, I myself cannot come up with a robust idea to allow the computer to automatically extract a graph from any type of images. Nevertheless I degisn this python project to interact with the user and help them do this work.
+This project aims at helping the user to extract a mathematical graph from a digital image using python. A graph, usually denoted as *G = (V, E)*, is widely used across various fields. There are multiple ways to store a graph in a computer(for example, a list). Meanwhile there are many applications that are capable of presenting a graph in a picture in a fairly clear way. However I have not yet found any published software that can do the reverse work, that is, recognize a graph from an image and store the data inside. Due to the variety of graph images, I myself cannot come up with a robust idea to allow the computer to automatically extract a graph from any type of images. Nevertheless I design this python project to interact with the user and help them do this work.
 
-The main tool which I use to manipulate images is OpenCV and the initial program is written with python 3.
+The programs are written in Python 3.5, along with additional packages including OpenCV, NumPy, SciPy, and PyQT which is used to create a better GUI.
 
-The algorithm, developed under the help from Adrian Rosebrock at PyImageRedearch,  is rather simple, and the steps are listed below:
+The description of the ideas behind is put in main.py. Here I want to provide an introduction about how to use my programs.
 
-1. Locate the vertices.
+There are two executable files in the directory. One is main.py and the other is graph_extraction_ui.py. The later is merely a variation with a GUI of the former and it is still under development. So I will focus on describing how to use the first one.
 
-2. Find the edges.
+First of all I do not recommend the user to execute main.py in any IDE. The reason is that my I am using OpenCV to display images, but it appears that the IDEs do not like the windows popped by this third-party package, causing some weird issue when displaying. So for a better display, use the console to execute the codes.
 
-The main approaches at each step are illustrated below.
+To begin, let's break the entire procedure into a few steps.
 
-1. Locating the Vertices
+1. Initialization
 
-	The main idea is multi-scale template matching(http://www.pyimagesearch.com/2015/01/26/multi-scale-template-matching-using-python-opencv/). The user must crop the image for an example of the vertices before executing the program. When the program accepts the image as well as the template, it will attempt to create a window on the image and slide through the entire image, trying to find a piece that is the most similar to the given template. Due to the limit of this algorithm, it cannot be guaranteed that all the vertices are correctly identified. Therefore the program will keep asking the user to provide the number of remaining unlocated vertices on the image untill all are found, and then allow the user to remove all the false vertices.
+    Before executing this program, the user must put the graph image in the directory called graph_input. And then they must crop an example of the vertices from the original image and put it in the folder vertex_example. Although the user is allowed to modify the file common where a number of constants are defined, do so at your own risk!
 
-	It is possible that in the original image all the vertices are labeled with a sequence of numbers. Recognizing text is another deep topic in computer vision, so I did not implement any feature that can do this job for the user. Instead, for now I can only ask the user to correct the order of the vertices.
+    After execution, the program first reads all the files in the input directory
+for graph images. It lists all the files out and asks the user to indicate the
+desired one by index. Same for selecting the vertex example.
 
-2. Detecting Edges
+2. Locating Vertices
 
-	Although it is suggested to use canny edge detector followed by contour extraction function to obtain the edges, the vertices might also be recognized as part of the edges if the two approaches are directly applied. Once the location of each vertex is obtained , we can first create a binary copy of the original image, and put a box filled with the background color at each vertex so that the vertices are hiddden and all the edges are separated from the vertices. The findContours function will then detect all the separated line segment left on the image, which forms a set of edges.
+    Next the program will ask the user to provide the number of vertices they want from the image. This number may not be accurate, and the request will be repeated until the user enter 0, implying that there is no vertex left not found. Due to the accuracy restriction of template matching which is the main technique being used here, there is no guarantee that all the detected vertices are true ones. However we still ask the user to keep staying at this step till all the vertices are marked. Depending on the input images, there may be some vertices
+in the image remain unmarked no matter how many times the user repeats the finding procedure. In this case, I apologize that my program cannot handle the given image.
 
-	Note that the fincContours function only returns a list of "contours", that is, a list of pixels that surround each line segment. Meanwhile, fortunately the function tends to put the pixel near the corner as the first element in each returned list, we then can approximate the end points of each line segment and find out which vertices the endpoints are likely to connect. In a more detailed way of saying, each list of pixels of contours will be examined and the program will attempt to get the end point of the corresponding edge, at last the program will examine all of these endpoints and determine if one is close enough to any vertex.
+    After the user enter 0, the program will label all the vertices on the image, and asks the user to give a sequence of indices of false vertices. The input must be a sequence of valid integers separated by space, however a single integer is allowed as well.
 
+    Next the user will be asked if they want to correct the order of the vertices. The user may answer yes if they want the indices to match the original labels on the image. There are two ways to correct. The first method, one-by-one, allows the user to correct the labels one by one as the name implies; the other method, once-for-all, allows the user to provide a sequence of correct labels, for example, let v<sub>1</sub>, v<sub>2</sub>, v<sub>3</sub>, ..., v<sub>n</sub> be a list of detect vertices with some labels assigned during the finding step, the user may enter a sequence of integers like 2, 1, 4, 6, ... to provide the correct indices for each vertex. Apparently the second method is better if the graph size is rather small.
 
-The above procedure suggested by Adrian does work, however the last part is problematic. The experiments show that the way we find which vertices is an edge connecting is not accurate enough. The problem appear to occur at marking the endpoints part. Since the line segments are not "lines" in mathematics, they have width formed by pixels, which turns out to be affecting the accuracy of determining the pixels that mark the two endpoints of a segment. Hence I introduce an algorthm that can improve the existing one: image thinning. By thinning the image using zhang-suen algorithm after blocking the vertices, all the remaining line segments are skeletons of the original ones, which reduces the "width" to merely one pixel. Due to the limit of my knowledge I cannot provode a further discussion about the underlying reason but it turns out that this approach dramastically improves the accuracy of the program.
+3. Detecting Edges
 
-Limitation:
+    The program now should start to process the image. When it completes, it will again display all the detected edges with labels and ask the user to provide a sequence of indices indicating the false edges just like the find-vertices step.
 
-There exist a number of limitations, among which many are unable to be solved by me due to my lack of knowledge. Firstly this program heavily depends on the quality of the images. In the example files, graph6.png is of the best quality and hence the program can yield a decent output; while the remaining 3 are of poor quality: either many of the vertices are out of reach(Hamiltonex.jpg), or there are always some edges that are undetectable. Tha main reason is that these images are bad in terms of pixel-wise quality. If we enlarge one of them then it is not hard to see that there are many noises surrounding the meaningful contents. Unfortunately so far I have not yet figured out a good solution to this issue.
+At the end a list of edges will be printed to the console.
+
+Minor Notes:
+
+1. When interacting with the user, there is a chance that the user may enter some invalid input, some are dangerous enough to break the entire program. To handle this type of issue, I write some codes to check the inputs and in most of the cases the program will keep asking the user till an acceptable one is given.
+
+2. There is no undo or redo here, as much as it sounds unreasonable in an image processing program.

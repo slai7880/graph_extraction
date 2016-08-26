@@ -15,6 +15,10 @@ TEMPLATE_PATH = 'vertex_example' + str(sep)
 # The text that is displayed at the beginning of the output.
 GREETING = "Welcome! Please provide the input filename:"
 
+# Some default window names.
+GRAPH = "graph"
+TEMPLATE = "template"
+
 # The input indicating that the step is complete, only used to test uesr input.
 DONE = 'done'
 
@@ -49,10 +53,12 @@ THRESHOLD = 127
 # Indicating the font properties of the numbers displayed on the image.
 FONT_COLOR = (0, 0, 255)
 FONT_THICKNESS = 1 # must be an integer
-FONT_SIZE = 0.5
+FONT_SIZE = 0.4
 
 # Indicating the label(rectangle) properties.
 RECT_COLOR = (0, 0, 255)
+RECT_THICKNESS = 2 # only integer allowed
 
+# for GUI only
 OUTPUT_FONT = 8
 GRAPH_SIZE_MAX = (1024, 768)
