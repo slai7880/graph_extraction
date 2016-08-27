@@ -60,38 +60,6 @@ def get_valid_list(user_input, prompt_sentence, list_length):
                valid = False
                user_input = ''
    return user_input
-   
-# Takes a directory path and a keyword string as parameters, lists all the
-# files inside the given directory, asks the user to indicate the desired image
-# file to be processed, and returns the image as well as the gray version of
-# the image.
-def get_image(dir_path, keyword):
-   image = None
-   image_gray = None
-   response = ''
-   valid = False
-   while response == '' or valid == False:
-      input_dir = listdir(dir_path)
-      print("Files in the input directory:")
-      print_list(input_dir)
-      response = input("Please provide the file by index of the " + keyword + 
-         ": ")
-      if is_valid_type(response, int, "Please provide an integer!"):
-         index = int(response)
-         if index >= 0 + BASE and index < len(input_dir) + BASE:
-            try:
-               image = cv2.imread(dir_path + input_dir[index - BASE])
-               image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-               valid = True
-               print("Selected " + keyword + " file: " + 
-                  str(input_dir[index - BASE]))
-            except:
-               print("Error: the " + keyword + " file is invalid or \
-                  cannot be processed.")
-               response = ''
-         else:
-            print("Error: index out of bound!\n")
-   return image, image_gray
 
 # Takes a string window_name, a graph image, and a list of nodes, creates a
 # window with the given name, displays the graph, and optionally labels each
