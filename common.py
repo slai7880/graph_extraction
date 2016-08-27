@@ -12,8 +12,6 @@ from os import sep
 GRAPH_PATH = 'graph_input' + str(sep)
 TEMPLATE_PATH = 'vertex_example' + str(sep)
 
-# The text that is displayed at the beginning of the output.
-GREETING = "Welcome! Please provide the input filename:"
 
 # Some default window names.
 GRAPH = "graph"

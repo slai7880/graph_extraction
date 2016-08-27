@@ -6,7 +6,43 @@ Sha Lai
 This program helps the user to extract a mathematical graph from a digital
 image and stores the data in some data structure.
 
-(to be continued)
+The first step before using this program is to crop an example of the vertices,
+and then pass the template to the function process_template so that we can get
+a new version where only the edges remain together with some helpful values
+which will be used in later procedures.
+
+To begin the user needs to call the function locate_vertices with an approaximate
+number of vertices, a copy of the gray-scale image, the template and its size
+values obtained in the previous step, and a list of nodes(this can be empty).
+The function implements the multi-scale template matching technique, that is,
+the function rescales the image, for each scale, it finds a piece of the image
+which matches the template the most by calling a function matchTemplate from
+the OpenCV package and store the upper-left coordinate of that piece into the
+provided list nodes. In order to prevent the function from finding the same
+piece of the image, everytime a piece is found, a white block is placed right
+on its location so that the piece will be covered up. Note that this is done on
+a copy of the image so that the original one will not be damaged. This function
+may need to be called multiple times in order to find all the vertices. If
+there is still one or more vertices remaining on the image undetected after a
+few times then the image cannot be handled by this program. Otherwise, when all
+the vertices are found the user must examine the node list, indicate the
+indices of false vertices, and use the function remove_indices to get rid of
+them. Be careful about the impact of the BASE value. Lastly the user may also
+want to call teh function get_center_pos to obtain the center coordinates of
+the true vertices.
+
+Next we want to find the edges. There are two main steps involved. Firstly we
+want to extract the contours, that is, the connected and pixels that surround
+a particular area usually with some color different from the background on the
+image. This can be done by calling the function extract_contours. It firstly
+put a block on each of the vertices so that their pixels will not be taken into
+account, and then it attempts to thin the image using zhang-seun's algorithm
+so that only the skeletons remain. After that it calls another OpenCV function
+findContours to obtain the contours that surround all the lines or curves on
+the thinned image. With the contours which are stored as lists of pixels, the
+user can proceed to the next step by using the function get_edges to obtain
+the edges of the graph.
+
 
 '''
 
@@ -16,7 +52,6 @@ import numpy as np
 import imutils
 import cv2
 from common import *
-from thinning import *
 from math import sqrt, inf, fabs
 from scipy.stats import mode
 from os import listdir
@@ -41,36 +76,18 @@ def is_valid_type(input, function, error = "Error: invalid input!"):
       print(error)
    return is_valid
 
-# Given a string of user_input, a prompt sentence, keep asking the user to
-# provide a list of indices until a valid one(can be DONE) is entered.
-def get_valid_list(user_input, prompt_sentence, list_length):
-   valid = False
-   while valid == False:
-      while user_input == '':
-         user_input = input(prompt_sentence)
-      indices = user_input.split()
-      valid = True
-      if user_input != DONE:
-         for i in indices:
-            if not is_valid_type(i, int, "Invalid input detected!"):
-               valid = False
-               user_input = ''
-            elif int(i) < BASE or int(i) >= BASE + list_length:
-               print("Error: index out of bound!\n")
-               valid = False
-               user_input = ''
-   return user_input
 
-# Takes a string window_name, a graph image, and a list of nodes, creates a
-# window with the given name, displays the graph, and optionally labels each
-# node with a red rectangle and a number indicating it's index in the list.
-def update_display(graph_display, elements, tW, tH, show_indices = True):
-   for i in range(len(elements)):
-      position = (elements[i][0] + int(tW / 3), elements[i][1] + 
+# Takes an image, a list of vertices, the size values of the block obtained
+# earlier, and a boolean value indicating if the indices will be displayed,
+# put down a customized block at each of the locations stored in the list on
+# the given image.
+def draw_vertices(graph_display, vertices, tW, tH, show_indices = True):
+   for i in range(len(vertices)):
+      position = (vertices[i][0] + int(tW / 3), vertices[i][1] + 
          int(tH * 2 / 3))
       if not isinstance(REL_POS, str):
-         x = abs(elements[i][0] + REL_POS[0])
-         y = abs(elements[i][1] + REL_POS[1])
+         x = abs(vertices[i][0] + REL_POS[0])
+         y = abs(vertices[i][1] + REL_POS[1])
          if x >= graph_display.shape[1]:
             x -= 2 * REL_POS[0]
          if y >= graph_display.shape[0]:
@@ -80,15 +97,15 @@ def update_display(graph_display, elements, tW, tH, show_indices = True):
          cv2.putText(graph_display, str(i + BASE), position, 
             cv2.FONT_HERSHEY_SIMPLEX, FONT_SIZE, FONT_COLOR, FONT_THICKNESS, 
             cv2.LINE_AA)
-      cv2.rectangle(graph_display, elements[i], (elements[i][0] + tW, 
-         elements[i][1] + tH), RECT_COLOR, RECT_THICKNESS)
+      cv2.rectangle(graph_display, vertices[i], (vertices[i][0] + tW, 
+         vertices[i][1] + tH), RECT_COLOR, RECT_THICKNESS)
    #cv2.startWindowThread()
    # cv2.imshow(window_name, graph_display)
    # cv2.waitKey(1)
 
 # Takes a set of edges and a copy of the original image, adds the indices of
 # the edges onto the image, returns the updated version.
-def update_edges_display(E, edge_to_contour, graph_copy):
+def draw_edges(E, edge_to_contour, graph_copy):
    contour_center = []
    for e in E:
       contour = edge_to_contour[e]
@@ -132,6 +149,15 @@ def remove_indices(user_input, nodes):
    nodes = [element for element in nodes if element != PLACE_HOLDER]
    return nodes
 
+# Takes a list of nodes which stores the upper-left coordinates of the nodes,
+# returns a list which stores the middle coordinates of the nodes under the
+# same order in the given list.
+def get_center_pos(nodes, tW, tH):
+   nodes_center = []
+   for node in nodes:
+      nodes_center.append((int(node[0] + tW / 2), int(node[1] + tH / 2)))
+   return nodes_center
+
 # Takes a string of user input, based on the list of indices contained in this
 # input string, returns a new list of edges where all the false vertex indices
 # have been removed.
@@ -146,14 +172,72 @@ def remove_edges(user_input, E):
    E = [E[i] for i in range(len(E)) if not i in removing]
    return E
 
+# The following four functions implement zhang-seun's image thinning algorithm.
+# Testing if the current pixel satisfies the required statement group #1.
+def test1(p, A, B):
+    return p[0] == 1 and \
+           B >= 2 and B <= 6 and \
+           A == 1 and \
+           (p[1] * p[3] * p[5] == 0) and \
+           (p[3] * p[5] * p[7] == 0)
+
+# Testing if the current pixel satisfies the required statement group #2.
+def test2(p, A, B):
+    return p[0] == 1 and \
+           B >= 2 and B <= 6 and \
+           A == 1 and \
+           (p[1] * p[3] * p[7] == 0) and \
+           (p[1] * p[5] * p[7] == 0)
+
+# Examines all the pixels in a given images, except for the outer ones, using
+# a provided test to collect all the satisfied pixels and returns the list.
+def examine(mat, test):
+    output = []
+    for i in range(1, mat.shape[0] - 1):
+        for j in range(1, mat.shape[1] - 1):
+            p = (int(mat[i, j]), int(mat[i - 1, j]), int(mat[i - 1, j + 1]), \
+                  int(mat[i, j + 1]), int(mat[i + 1, j + 1]), \
+                  int(mat[i + 1, j]), int(mat[i + 1, j - 1]), \
+                  int(mat[i, j - 1]), int(mat[i - 1, j - 1]))
+            A = 0
+            B = p[1]
+            for k in range(2, len(p)):
+                if p[k] == 1 and p[k - 1] == 0:
+                    A += 1
+                B += p[k]
+            if p[1] == 1 and p[-1] == 0:
+                A += 1
+            if test(p, A, B):
+                output.append((i, j))
+    return output
+
+# Takes a binay image as input, assuming that the main contents are represented
+# as 1s while the rest are 0s, and then thins the contents so that only a
+# skeleton of 1 pixel wide is remained.
+def thinning(image):
+   mat = image.copy()
+   if mat.shape[0] < 3 or mat.shape[1] < 3:
+      sys.exit("Invalid image input: " + str(mat.shape))
+   keep_itr = True
+   while keep_itr:
+      output1 = examine(mat, test1)
+      for coor in output1:
+         mat[coor[0], coor[1]] = 0
+      output2 = examine(mat, test2)
+      for coor in output2:
+         mat[coor[0], coor[1]] = 0
+      if len(output1) + len(output2) == 0:
+         keep_itr = False
+   return mat
 
 #                               End of Section                                #
 ###############################################################################
 ###############################################################################
 #                               Main Functions                                #
 
-# Processes the template in order to retrieve helpful information.
-def process_template(template, break_point):
+# Extracts all the edges in the template, returns the new template along with
+# the size values and the radius which will be used in later procedures.
+def process_template(template):
    template = cv2.Canny(template, 50, 200)
    (tH, tW) = template.shape[:2]
    
@@ -173,6 +257,8 @@ def locate_vertices(amount, graph_work, template, tW, tH, nodes):
    # from PyImageResearch
    for i in range(amount):
       found = None
+      # rescale the image, for each scale, find the piece that has the best
+      # matching score
       for scale in np.linspace(0.2, 1.0, 20)[::-1]:
          resized = imutils.resize(graph_work, width = \
             int(graph_work.shape[1] * scale))
@@ -221,7 +307,7 @@ def extract_contours(graph_gray, nodes, tW, tH, break_point, thin = True):
    
    
    # Performs image thinning if neccessary.
-   cv2.startWindowThread()
+   # cv2.startWindowThread()
    #cv2.imshow("graph_gray_bin", graph_gray_bin)
    #cv2.waitKey(1)
    ret, graph_gray_bin = cv2.threshold(graph_gray_bin, break_point, 1, \
@@ -235,7 +321,8 @@ def extract_contours(graph_gray, nodes, tW, tH, break_point, thin = True):
    
    '''
    # Use a simple way.
-   high_thresh, thresh_im = cv2.threshold(graph_gray_bin.copy(), 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+   high_thresh, thresh_im = cv2.threshold(graph_gray_bin.copy(), 0, 255, \
+                                          cv2.THRESH_BINARY + cv2.THRESH_OTSU)
    result = cv2.Canny(graph_gray_bin, high_thresh, high_thresh)
    '''
    
@@ -250,6 +337,11 @@ def extract_contours(graph_gray, nodes, tW, tH, break_point, thin = True):
    #cv2.waitKey(1)
    return contours
 
+# Takes a list of contours, a list of coordinates of the nodes' center and the
+# radius values, this function examines all the contours, finds the pixels that
+# are likely to be the endpoints of an edge, determines if the distance between
+# these pixels and any vertex falls within some tolerance, if so records an
+# edge.
 def get_edges(contours, nodes_center, radius):
    E = [] # where the outputs are stored
    edge_pos = [] # stores the estimated midpoints of edges

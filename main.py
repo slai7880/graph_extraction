@@ -70,6 +70,26 @@ def get_images(show_graph = False, show_template = False):
    break_point = get_threshold(graph_gray)
    return graph, graph_gray, template_gray, break_point
 
+# Given a string of user input, a prompt sentence, keep asking the user to
+# provide a list of indices until a valid one(can be DONE) is entered.
+def get_valid_list(user_input, prompt_sentence, list_length):
+   valid = False
+   while valid == False:
+      while user_input == '':
+         user_input = input(prompt_sentence)
+      indices = user_input.split()
+      valid = True
+      if user_input != DONE:
+         for i in indices:
+            if not is_valid_type(i, int, "Invalid input detected!"):
+               valid = False
+               user_input = ''
+            elif int(i) < BASE or int(i) >= BASE + list_length:
+               print("Error: index out of bound!\n")
+               valid = False
+               user_input = ''
+   return user_input
+
 # Takes three parameters, a graph_display that is used to present to the user
 # a graph_work that is used to perform algorithms, and a template that stores
 # an example of a node. This function first asks the user to give an
@@ -101,7 +121,7 @@ def find_vertices(graph_display, graph_work, template, tW, tH):
             print("\nCannot recognize the input, please provide a number.")
             
       locate_vertices(user_input, graph_work, template, tW, tH, nodes)
-      update_display(graph_display, nodes, tW, tH, False)
+      draw_vertices(graph_display, nodes, tW, tH, False)
       cv2.startWindowThread()
       cv2.imshow("Vertices", graph_display)
       cv2.waitKey(1)
@@ -115,7 +135,7 @@ def find_vertices(graph_display, graph_work, template, tW, tH):
    user_input = ''
    while not user_input == DONE:
       graph_display3 = graph_display2.copy()
-      update_display(graph_display3, nodes, tW, tH)
+      draw_vertices(graph_display3, nodes, tW, tH)
       cv2.startWindowThread()
       cv2.imshow("Vertices with Labels", graph_display3)
       cv2.waitKey(1)
@@ -128,8 +148,7 @@ def find_vertices(graph_display, graph_work, template, tW, tH):
          print("Current vertices:")
          print_list(nodes)
          user_input = ''
-   for node in nodes:
-      nodes_center.append((int(node[0] + tW / 2), int(node[1] + tH / 2)))
+   nodes_center = get_center_pos(nodes, tW, tH)
    print("Current vertices:")
    print_list(nodes)
    return nodes, nodes_center
@@ -235,7 +254,7 @@ def extract_edges(nodes, nodes_center, radius, graph, graph_gray, tW, tH, \
    user_input = ''
    while not user_input == DONE:
       print("Number of edges detected: " + str(len(E)))
-      edges_display = update_edges_display(E, edge_to_contour, graph.copy())
+      edges_display = draw_edges(E, edge_to_contour, graph.copy())
       cv2.startWindowThread()
       cv2.imshow("Edges with Labels", edges_display)
       cv2.waitKey(1)
@@ -262,7 +281,7 @@ if __name__ == "__main__":
    graph, graph_gray, template, break_point = get_images(True)
    
    # Process the template.
-   template, (tH, tW), radius = process_template(template, break_point)
+   template, (tH, tW), radius = process_template(template)
    
    # Find all the vertices. In particular variable nodes stores a list of
    # nodes' upper-right corner.
