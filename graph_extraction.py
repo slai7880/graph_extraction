@@ -39,10 +39,34 @@ put a block on each of the vertices so that their pixels will not be taken into
 account, and then it attempts to thin the image using zhang-seun's algorithm
 so that only the skeletons remain. After that it calls another OpenCV function
 findContours to obtain the contours that surround all the lines or curves on
-the thinned image. With the contours which are stored as lists of pixels, the
-user can proceed to the next step by using the function get_edges to obtain
-the edges of the graph.
+the thinned image.
 
+With the contours which are stored as lists of pixels, the user can proceed to
+the next step by using the function get_edges to obtain the edges of the graph.
+Even though we only have contour pixels rather than the pixels of the edges
+themselves, since here a contour is merely the pixels that surround a certain
+edge's skeleton, I claim that analyzing the contour pixels is accurate enough.
+However due to the way in which the contours are stored, it is likely to be
+challenging to determine which pixels are closed to the endpoints of an edge.
+There are two ways to solve this. The first method is rather simple. By
+observation, the function findContours appears to tend to store the contours in
+a way such that the pixels near an endpoint are located at the beginning, and
+hence also the end of the list. Then intuitively we can approximate the
+coordinates by selecting the first and the middle elements in the list. This
+method works well in terms of efficiency and accuracy when the image is in high
+quality, while it loses the second advantage when the quality is not that high,
+hence the need for the second method. The second approach locates the two 
+endpoints, or to be more precisely, two pixels that are adjacent the two
+endpointsone respectively one after another. The idea is straightforward: for
+each contour, look for a pixel-vertex pair where the pixel is contain in the
+contour and the distance between this two elements is minimized, and then look
+for another pixel-vertex pair with the same properties except that the new
+pixel and the new vertex are both different from the ones obtained previously.
+The test to determine which vertex each endpoint is pointing to is identical in
+both of the approaches: an endpoint is linked to a vertex if the distance lies
+within a certain range and it is the lowest among all the endpoint-vertex pairs.
+An edge can be recored if the last set of tests are passed. These tests help
+clearing false edges, duplicated ones as well as self-edges.
 
 '''
 
@@ -99,21 +123,14 @@ def draw_vertices(graph_display, vertices, tW, tH, show_indices = True):
             cv2.LINE_AA)
       cv2.rectangle(graph_display, vertices[i], (vertices[i][0] + tW, 
          vertices[i][1] + tH), RECT_COLOR, RECT_THICKNESS)
-   #cv2.startWindowThread()
-   # cv2.imshow(window_name, graph_display)
-   # cv2.waitKey(1)
 
 # Takes a set of edges and a copy of the original image, adds the indices of
 # the edges onto the image, returns the updated version.
-def draw_edges(E, edge_to_contour, graph_copy):
-   contour_center = []
-   for e in E:
-      contour = edge_to_contour[e]
-      contour_center.append(contour[int(len(contour) / 4)])
-   for i in range(len(contour_center)):
-      cv2.putText(graph_copy, str(i + BASE), (contour_center[i][0][0], \
-         contour_center[i][0][1]), cv2.FONT_HERSHEY_SIMPLEX, FONT_SIZE, \
-         FONT_COLOR, FONT_THICKNESS, cv2.LINE_AA)
+def draw_edges(edges_center, graph_copy):
+   for i in range(len(edges_center)):
+      cv2.putText(graph_copy, str(i + BASE), (edges_center[i][0],\
+                  edges_center[i][1]), cv2.FONT_HERSHEY_SIMPLEX, FONT_SIZE, \
+                  FONT_COLOR, FONT_THICKNESS, cv2.LINE_AA)
    return graph_copy
       
 # Returns the threshold of color value which is used to distinguish the
@@ -161,7 +178,7 @@ def get_center_pos(nodes, tW, tH):
 # Takes a string of user input, based on the list of indices contained in this
 # input string, returns a new list of edges where all the false vertex indices
 # have been removed.
-def remove_edges(user_input, E):
+def remove_edges(user_input, E, edges_center):
    index_remove = user_input.split()
    removing = []
    for i in index_remove:
@@ -170,7 +187,9 @@ def remove_edges(user_input, E):
       except:
          print("Invalid input, please try again!")
    E = [E[i] for i in range(len(E)) if not i in removing]
-   return E
+   edges_center = [edges_center[i] for i in range(len(edges_center))\
+                     if not i in removing]
+   return E, edges_center
 
 # The following four functions implement zhang-seun's image thinning algorithm.
 # Testing if the current pixel satisfies the required statement group #1.
@@ -307,17 +326,11 @@ def extract_contours(graph_gray, nodes, tW, tH, break_point, thin = True):
    
    
    # Performs image thinning if neccessary.
-   # cv2.startWindowThread()
-   #cv2.imshow("graph_gray_bin", graph_gray_bin)
-   #cv2.waitKey(1)
    ret, graph_gray_bin = cv2.threshold(graph_gray_bin, break_point, 1, \
-      cv2.THRESH_BINARY_INV)
+      cv2.THRESH_BINARY_INV) # obtain a binary image
    if thin:
       graph_gray_bin = thinning(graph_gray_bin)
    ret, result = cv2.threshold(graph_gray_bin, 0, 255, cv2.THRESH_BINARY)
-   #cv2.startWindowThread()
-   #cv2.imshow("result", result)
-   #cv2.waitKey(1)
    
    '''
    # Use a simple way.
@@ -332,40 +345,63 @@ def extract_contours(graph_gray, nodes, tW, tH, break_point, thin = True):
       cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
    cv2.drawContours(contours_display, contours, 1, (255, 255, 255), 3)
    print("Number of contours detected: " + str(len(contours)))
-   #cv2.startWindowThread()
-   #cv2.imshow("contouts", contours_display)
-   #cv2.waitKey(1)
    return contours
 
 # Takes a list of contours, a list of coordinates of the nodes' center and the
-# radius values, this function examines all the contours, finds the pixels that
-# are likely to be the endpoints of an edge, determines if the distance between
-# these pixels and any vertex falls within some tolerance, if so records an
-# edge.
-def get_edges(contours, nodes_center, radius):
+# radius values, returns the output list E and a list of middle points of the
+# edges.
+def get_edges(contours, nodes_center, radius, method = 2):
    E = [] # where the outputs are stored
-   edge_pos = [] # stores the estimated midpoints of edges
-   minimum = [] # stores the recorded minimum distances, for debugging purpose
+   edges_center = [] # stores the estimated midpoints of edges, for debugging
+   minimum = [] # stores the recorded minimum distances, for debugging
    # maps edges to their corresponding contours, for debugging purpose
    edge_to_contour = {} 
    for i in range(len(contours)):
-      edge = contours[i]
       end1 = -1
       end2 = -1
-      end1_pos = (edge[0][0][0], edge[0][0][1])
-      end2_pos = (edge[int(len(edge) / 2)][0][0], edge[int(len(edge) / 2)][0][1])
       d_min1 = inf
-      for i in range(len(nodes_center)):
-         d_temp = get_distance(end1_pos, nodes_center[i])
-         if d_temp < radius * TOLERANCE_FACTOR and d_temp < d_min1:
-            d_min1 = d_temp
-            end1 = i + BASE
       d_min2 = inf
-      for i in range(len(nodes_center)):
-         d_temp = get_distance(end2_pos, nodes_center[i])
-         if d_temp < radius * TOLERANCE_FACTOR and d_temp < d_min2:
-            d_min2 = d_temp
-            end2 = i + BASE
+      if method == 1:
+         end1_pos = (contour[0][0][0], contour[0][0][1])
+         end2_pos = (contour[int(len(contour) / 2)][0][0],\
+                     contour[int(len(contour) / 2)][0][1])
+         for i in range(len(nodes_center)):
+            d_temp = get_distance(end1_pos, nodes_center[i])
+            if d_temp < radius * TOLERANCE_FACTOR and d_temp < d_min1:
+               d_min1 = d_temp
+               end1 = i + BASE
+         for i in range(len(nodes_center)):
+            d_temp = get_distance(end2_pos, nodes_center[i])
+            if d_temp < radius * TOLERANCE_FACTOR and d_temp < d_min2:
+               d_min2 = d_temp
+               end2 = i + BASE
+      else:
+         contour = contours[i]
+         # first, find one of the two endpoints
+         end1_pos = PLACE_HOLDER
+         for j in range(len(contour)): # for each pixel in one contour
+            for k in range(len(nodes_center)): # for each vertex
+               d_temp = get_distance(contour[j][0], nodes_center[k])
+               if d_temp < radius * TOLERANCE_FACTOR and d_temp < d_min1:
+                  d_min1 = d_temp
+                  end1_pos = contour[j][0]
+                  end1 = k + BASE
+      
+         # now that one endpoint is found, need to find the other one
+         end2_pos = PLACE_HOLDER
+         for j in range(len(contour)): # for each pixel in one contour
+            for k in range(len(nodes_center)): # for each vertex
+               d_temp = get_distance(contour[j][0], nodes_center[k])
+               if d_temp < radius * TOLERANCE_FACTOR and d_temp < d_min2 and\
+                  (not end1_pos[0] == contour[j][0][0]) and\
+                  (not end1_pos[1] == contour[j][0][1]) and\
+                  k != end1 - BASE:
+                  
+                  
+                  d_min2 = d_temp
+                  end2_pos = contour[j][0]
+                  end2 = k + BASE
+               
       # Only records an edge if the all of the following hold:
       # 1. Both end points are connected to some vertex.
       # 2. The edge has not yet been detected.
@@ -374,10 +410,11 @@ def get_edges(contours, nodes_center, radius):
          (not (end1, end2) in E) and (not (end2, end1) in E) and\
          (not end1 == end2):
          E.append((end1, end2))
-         edge_to_contour[(end1, end2)] = edge
+         edge_to_contour[(end1, end2)] = contour
          minimum.append((d_min1, d_min2))
-         edge_pos.append([end1_pos, end2_pos])
-   return E, minimum, edge_pos, edge_to_contour
+         edges_center.append([int((end1_pos[0] + end2_pos[0]) / 2),\
+                              int((end1_pos[1] + end2_pos[1]) / 2)])
+   return E, edges_center
          
 #                               End of Section                                #
 # =========================================================================== #

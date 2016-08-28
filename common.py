@@ -20,30 +20,33 @@ TEMPLATE = "template"
 # The input indicating that the step is complete, only used to test uesr input.
 DONE = 'done'
 
-# The replacing element for a false node in the list.
+# The place holding tuple used for some undetermined coordinate or elements
+# pending to be removed.
 PLACE_HOLDER = (-1, -1)
 
-# The relative position of the label of each node when displaying them. Alternatively
-# if REL_POS = 'MIDDLE' is active, then the label will be placed around the middle of the frames.
+# The relative position of the label of each node when displaying them.
+# Alternatively if REL_POS = 'MIDDLE' is active, then the label will be placed
+# around the middle of the frames.
 # REL_POS = (15, 15)
 REL_POS = 'MIDDLE'
 
-# The starting index of the vertices or edges when they are displayed and when the user is
-# providing indices.
+# The starting index of the vertices or edges when they are displayed and when
+# the user is providing indices.
 BASE = 1
 
-# When extracting the edges, nodes must be blocked, this number affects the size of each block,
-# so it may also affect the accuracy of the process.
-SCALE_PERCENTAGE = 0.6
+# When extracting the edges, nodes must be blocked, this number affects the
+# size of each block, so it may also affect the accuracy of the process.
+SCALE_PERCENTAGE = 0.2
 
-# This constant is the threshold factor of the ditance between an end point of an edge and the
-# center of a node, a value greater than 1 is recommended. Feel free to increase this value if
-# there exists at least one undetected edge.
-TOLERANCE_FACTOR = 1.6
+# This constant is the threshold factor of the ditance between an end point of
+# an edge and the center of a node, a value greater than 1 is recommended. Feel
+# free to increase this value if there exists some undetected edges.
+TOLERANCE_FACTOR = 1.2
 
-# The following two constants is relavant to how to distinguish the background and the contents.
-# If METHOD is 'STATIC' then the value of THRESHOLD will serve as a break point. Otherwise the
-# program will use the most common color on the image to be the background color.
+# The following two constants is relavant to how to distinguish the background
+# and the contents. If METHOD is 'STATIC' then the value of THRESHOLD will
+# serve as a break point. Otherwise the program will use the most common color
+# on the image to be the background color.
 METHOD = 'DYNAMIC'
 #METHOD = 'STATIC'
 THRESHOLD = 127
@@ -54,8 +57,8 @@ FONT_THICKNESS = 1 # must be an integer
 FONT_SIZE = 0.4
 
 # Indicating the label(rectangle) properties.
-RECT_COLOR = (0, 0, 255)
-RECT_THICKNESS = 2 # only integer allowed
+RECT_COLOR = (0, 0, 255) # in an order Blue-Green-Red, as opposed to RGB
+RECT_THICKNESS = 2 # must be an integer
 
 # for GUI only
 OUTPUT_FONT = 8

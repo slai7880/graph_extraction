@@ -248,13 +248,24 @@ def sort_vertices(nodes):
 def extract_edges(nodes, nodes_center, radius, graph, graph_gray, tW, tH, \
                   break_point):
    contours = extract_contours(graph_gray, nodes, tW, tH, break_point)
+   valid = False
+   while valid == False:
+      print("Please indicate a method to help extract the edges:")
+      print("1. Simple")
+      print("2. Normal")
+      response = input("Your choice is ")
+      if is_valid_type(response, int, "Please provide an integer!"):
+         if int(response) > 2 or int(response) < 1:
+            print("Please enter 1 or 2.")
+         else:
+            valid = True
    print("Retrieving edge data....")
-   E, minimum, edge_pos, edge_to_contour = get_edges(contours, nodes_center, radius)
+   E, edges_center = get_edges(contours, nodes_center, radius, int(response))
    # ask the user to remove redundancy
    user_input = ''
    while not user_input == DONE:
       print("Number of edges detected: " + str(len(E)))
-      edges_display = draw_edges(E, edge_to_contour, graph.copy())
+      edges_display = draw_edges(edges_center, graph.copy())
       cv2.startWindowThread()
       cv2.imshow("Edges with Labels", edges_display)
       cv2.waitKey(1)
@@ -263,7 +274,7 @@ def extract_edges(nodes, nodes_center, radius, graph, graph_gray, tW, tH, \
                                     "or \"done\" to proceed to next step:\n",\
                                     len(E))
       if user_input != DONE:
-         E = remove_edges(user_input, E)
+         E, edges_center = remove_edges(user_input, E, edges_center)
          user_input = ''
       
    #print("Goal distance = " + str(radius * TOLERANCE_FACTOR))
