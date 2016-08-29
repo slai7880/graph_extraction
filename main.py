@@ -159,7 +159,7 @@ def find_vertices(graph_display, graph_work, template, tW, tH):
 # Note: the second of sorting is not safe for large size graph since if
 # the user's input, when sorted in order, is not an arithmetic sequence,
 # then the program will be broken.
-def sort_vertices(nodes):
+def sort_vertices(nodes, graph_display):
    answer = ''
    while answer == '':
       answer = input("Do you want to sort the vertices? (y/n): ")
@@ -204,20 +204,22 @@ def sort_vertices(nodes):
                   " for each vertex or \"done\" to proceed to next step:\n")
                try:
                   indices = indices.split()
-                  for i in range(len(indices)):
-                     if int(indices[i]) in index_list:
-                        print("Duplicate index detected, please provide " + 
-                           "another one.")
-                        break
-                     else:
-                        index_list.append(int(indices[i]))
-                  if not len(index_list) == len(nodes):
+                  if not len(indices) == len(nodes):
                      print("Not enough integers or too many of them, please " + 
                         "try again.")
-                  elif not max(index_list) + 1 - BASE == len(index_list):
-                     print("The given input is not a valid arithmetic sequence!")
                   else:
-                     valid = True
+                     for i in range(len(indices)):
+                        if int(indices[i]) in index_list:
+                           print("Duplicate index detected, please provide " + 
+                              "another one.")
+                           break
+                        else:
+                           index_list.append(int(indices[i]))
+                     if len(index_list) == len(nodes):
+                        if not max(index_list) + 1 - BASE == len(index_list):
+                           print("The given input is not a valid arithmetic sequence!")
+                        else:
+                           valid = True
                except:
                   print("Please provide a sequence of valid integers.")
          else:
@@ -226,6 +228,11 @@ def sort_vertices(nodes):
          for i in range(len(index_list)):
             result[index_list[i] - BASE] = nodes[i]
          nodes = result
+         draw_vertices(graph_display, nodes, tW, tH)
+         cv2.startWindowThread()
+         cv2.destroyWindow("Vertices with Labels")
+         cv2.imshow("Vertices with Labels", graph_display)
+         cv2.waitKey(1)
          print("Updated list of vertices:")
          print_list(nodes)
       elif answer[0] == 'n' or answer[0] == 'N':
@@ -300,7 +307,7 @@ if __name__ == "__main__":
       template, tW, tH)
    
    # If neccesary, sort the vertices such that the order matches the given one.
-   sort_vertices(nodes)
+   sort_vertices(nodes, graph.copy())
    
    # Gets the edges of the graph.
    E = extract_edges(nodes, nodes_center, radius, graph, graph_gray, tW, tH, \

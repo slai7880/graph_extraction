@@ -36,7 +36,7 @@ BASE = 1
 
 # When extracting the edges, nodes must be blocked, this number affects the
 # size of each block, so it may also affect the accuracy of the process.
-SCALE_PERCENTAGE = 0.2
+SCALE_PERCENTAGE = 0.6
 
 # This constant is the threshold factor of the ditance between an end point of
 # an edge and the center of a node, a value greater than 1 is recommended. Feel
@@ -58,6 +58,7 @@ FONT_SIZE = 0.4
 
 # Indicating the label(rectangle) properties.
 RECT_COLOR = (0, 0, 255) # in an order Blue-Green-Red, as opposed to RGB
+# RECT_COLOR = (255, 0, 0) # use this one when running in GUI
 RECT_THICKNESS = 2 # must be an integer
 
 # for GUI only

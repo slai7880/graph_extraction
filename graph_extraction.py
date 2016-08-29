@@ -361,6 +361,7 @@ def get_edges(contours, nodes_center, radius, method = 2):
       end2 = -1
       d_min1 = inf
       d_min2 = inf
+      contour = contours[i]
       if method == 1:
          end1_pos = (contour[0][0][0], contour[0][0][1])
          end2_pos = (contour[int(len(contour) / 2)][0][0],\
@@ -376,7 +377,6 @@ def get_edges(contours, nodes_center, radius, method = 2):
                d_min2 = d_temp
                end2 = i + BASE
       else:
-         contour = contours[i]
          # first, find one of the two endpoints
          end1_pos = PLACE_HOLDER
          for j in range(len(contour)): # for each pixel in one contour
