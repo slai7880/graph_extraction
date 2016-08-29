@@ -163,80 +163,84 @@ def sort_vertices(nodes, graph_display):
    answer = ''
    while answer == '':
       answer = input("Do you want to sort the vertices? (y/n): ")
-      if answer[0] == 'y' or answer[0] == 'Y':
-         result = [(0, 0)] * len(nodes)
-         
-         sorting_option = 0
-         while sorting_option == 0:
-            print("Please indicate the method by index you want to help" + 
-               " sorting:")
-            print("1. One-by-one,")
-            print("2. Once-for-all.")
-            response = input("Your choice? ")
-            if is_valid_type(response, int, "The input is not an integer."):
-               sorting_option = int(response)
-               if sorting_option < 1 or sorting_option > 2:
-                  print("Please provide a valid integer!")
-                  sorting_option = 0
-         
-         if sorting_option == 1:
-            index_list = []
-            for i in range(len(nodes)):
-               valid = False
-               while valid == False:
-                  index = input("What's the correct index value of the " + 
-                     "vertex " + str(BASE + i) + ". " + str(nodes[i]) + "? ")
-                  if is_valid_type(index, int, "Please provide a valid integer."):
-                     index = int(index)
-                     if index < BASE or index >= BASE + len(nodes):
-                        print("Error: index out of bound!\n")
-                     elif index in index_list:
-                        print("Duplicate index detected, please provide " + 
-                           "another one.")
-                     else:
-                        valid = True
-                        index_list.append(index)
-         elif sorting_option == 2:
-            valid = False
-            while valid == False:
+      if len(answer) > 0:
+         if answer[0] == 'y' or answer[0] == 'Y':
+            result = [(0, 0)] * len(nodes)
+            
+            sorting_option = 0
+            while sorting_option == 0:
+               print("Please indicate the method by index you want to help" + 
+                  " sorting:")
+               print("1. One-by-one,")
+               print("2. Once-for-all.")
+               response = input("Your choice? ")
+               if is_valid_type(response, int, "The input is not an integer."):
+                  sorting_option = int(response)
+                  if sorting_option < 1 or sorting_option > 2:
+                     print("Please provide a valid integer!")
+                     sorting_option = 0
+            
+            if sorting_option == 1:
                index_list = []
-               indices = input("Please provide a sequence of correct indices" + 
-                  " for each vertex or \"done\" to proceed to next step:\n")
-               try:
-                  indices = indices.split()
-                  if not len(indices) == len(nodes):
-                     print("Not enough integers or too many of them, please " + 
-                        "try again.")
-                  else:
-                     for i in range(len(indices)):
-                        if int(indices[i]) in index_list:
+               for i in range(len(nodes)):
+                  valid = False
+                  while valid == False:
+                     index = input("What's the correct index value of the " + 
+                        "vertex " + str(BASE + i) + ". " + str(nodes[i]) + "? ")
+                     if is_valid_type(index, int, "Please provide a valid integer."):
+                        index = int(index)
+                        if index < BASE or index >= BASE + len(nodes):
+                           print("Error: index out of bound!\n")
+                        elif index in index_list:
                            print("Duplicate index detected, please provide " + 
                               "another one.")
-                           break
-                        else:
-                           index_list.append(int(indices[i]))
-                     if len(index_list) == len(nodes):
-                        if not max(index_list) + 1 - BASE == len(index_list):
-                           print("The given input is not a valid arithmetic sequence!")
                         else:
                            valid = True
-               except:
-                  print("Please provide a sequence of valid integers.")
+                           index_list.append(index)
+            elif sorting_option == 2:
+               valid = False
+               while valid == False:
+                  index_list = []
+                  indices = input("Please provide a sequence of correct indices" + 
+                     " for each vertex or \"done\" to proceed to next step:\n")
+                  try:
+                     indices = indices.split()
+                     if not len(indices) == len(nodes):
+                        print("Not enough integers or too many of them, please " + 
+                           "try again.")
+                     else:
+                        for i in range(len(indices)):
+                           if int(indices[i]) in index_list:
+                              print("Duplicate index detected, please provide " + 
+                                 "another one.")
+                              break
+                           else:
+                              index_list.append(int(indices[i]))
+                        if len(index_list) == len(nodes):
+                           if not max(index_list) + 1 - BASE == len(index_list):
+                              print("The given input is not a valid arithmetic sequence!")
+                           else:
+                              valid = True
+                  except:
+                     print("Please provide a sequence of valid integers.")
+            else:
+               print("Cannot sort the vertices, check the method indicating value.")
+               exit(1)
+            for i in range(len(index_list)):
+               result[index_list[i] - BASE] = nodes[i]
+            nodes = result
+            draw_vertices(graph_display, nodes, tW, tH)
+            cv2.startWindowThread()
+            cv2.destroyWindow("Vertices with Labels")
+            cv2.imshow("Vertices with Labels", graph_display)
+            cv2.waitKey(1)
+            print("Updated list of vertices:")
+            print_list(nodes)
+         elif answer[0] == 'n' or answer[0] == 'N':
+            break
          else:
-            print("Cannot sort the vertices, check the method indicating value.")
-            exit(1)
-         for i in range(len(index_list)):
-            result[index_list[i] - BASE] = nodes[i]
-         nodes = result
-         draw_vertices(graph_display, nodes, tW, tH)
-         cv2.startWindowThread()
-         cv2.destroyWindow("Vertices with Labels")
-         cv2.imshow("Vertices with Labels", graph_display)
-         cv2.waitKey(1)
-         print("Updated list of vertices:")
-         print_list(nodes)
-      elif answer[0] == 'n' or answer[0] == 'N':
-         break
+            answer = ''
+            print("Please answer with y/n.")
       else:
          answer = ''
          print("Please answer with y/n.")
@@ -254,7 +258,19 @@ def sort_vertices(nodes, graph_display):
 # the tolerance and is the smallest compared with the rest.
 def extract_edges(nodes, nodes_center, radius, graph, graph_gray, tW, tH, \
                   break_point):
-   contours = extract_contours(graph_gray, nodes, tW, tH, break_point)
+   response = ''
+   thin = False
+   while response == '':
+      response = input("Do you want to thin the image?(y/n) ")
+      if len(response) > 0:
+         if response[0] == 'y' or response[0] == 'Y':
+            thin = True
+         elif response[0] == 'n' or response[0] == 'N':
+            thin = False
+         else:
+            print("Please answer yes or no.")
+            response = ''
+   contours = extract_contours(graph_gray, nodes, tW, tH, break_point, thin)
    valid = False
    while valid == False:
       print("Please indicate a method to help extract the edges:")

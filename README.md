@@ -29,7 +29,7 @@ in the image remain unmarked no matter how many times the user repeats the findi
 
 3. Detecting Edges
 
-    The program now should start to process the image. When it completes, it will again display all the detected edges with labels and ask the user to provide a sequence of indices indicating the false edges just like the find-vertices step.
+    The program should now ask the user if they want to thin the image. This technique aims to improve the accuracy for some images with a price of wait time but for now I haven't found it necessary on the example images in the input directory. Next the program will start to process the image. When it completes, it will again display all the detected edges with labels and ask the user to provide a sequence of indices indicating the false edges just like the find-vertices step.
 
 At the end a list of edges will be printed to the console.
 

@@ -36,10 +36,10 @@ want to extract the contours, that is, the connected and pixels that surround
 a particular area usually with some color different from the background on the
 image. This can be done by calling the function extract_contours. It firstly
 put a block on each of the vertices so that their pixels will not be taken into
-account, and then it attempts to thin the image using zhang-seun's algorithm
-so that only the skeletons remain. After that it calls another OpenCV function
-findContours to obtain the contours that surround all the lines or curves on
-the thinned image.
+account, and then it optionally attempts to thin the image using zhang-seun's
+algorithm so that only the skeletons remain. After that it calls another OpenCV
+function findContours to obtain the contours that surround all the lines or
+curves on the thinned image.
 
 With the contours which are stored as lists of pixels, the user can proceed to
 the next step by using the function get_edges to obtain the edges of the graph.
