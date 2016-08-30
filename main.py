@@ -139,7 +139,8 @@ def find_vertices(graph_display, graph_work, template, tW, tH):
       cv2.startWindowThread()
       cv2.imshow("Vertices with Labels", graph_display3)
       cv2.waitKey(1)
-      user_input = get_valid_list(user_input, "Indicate non-vertex element " +
+      user_input = ''
+      user_input = get_valid_list(user_input, "Indicate non-vertex elements " +
                                     "in the list in a sequence of indices " +
                                     "or \"done\" to proceed to next step:\n",\
                                     len(nodes))
@@ -148,10 +149,10 @@ def find_vertices(graph_display, graph_work, template, tW, tH):
          print("Current vertices:")
          print_list(nodes)
          user_input = ''
-   nodes_center = get_center_pos(nodes, tW, tH)
+   
    print("Current vertices:")
    print_list(nodes)
-   return nodes, nodes_center
+   return nodes
 
 # Takes a list of vertices as the parameter, allows the user to select
 # their prefered method to correct the index of each vertex. When entering
@@ -244,7 +245,7 @@ def sort_vertices(nodes, graph_display):
       else:
          answer = ''
          print("Please answer with y/n.")
-
+   return nodes
 
 
 
@@ -288,7 +289,8 @@ def extract_edges(nodes, nodes_center, radius, graph, graph_gray, tW, tH, \
    user_input = ''
    while not user_input == DONE:
       print("Number of edges detected: " + str(len(E)))
-      edges_display = draw_edges(edges_center, graph.copy())
+      edges_display = graph.copy()
+      draw_edges(edges_display, edges_center)
       cv2.startWindowThread()
       cv2.imshow("Edges with Labels", edges_display)
       cv2.waitKey(1)
@@ -319,11 +321,13 @@ if __name__ == "__main__":
    
    # Find all the vertices. In particular variable nodes stores a list of
    # nodes' upper-right corner.
-   nodes, nodes_center = find_vertices(graph.copy(), graph_gray.copy(), \
+   nodes = find_vertices(graph.copy(), graph_gray.copy(), \
       template, tW, tH)
    
    # If neccesary, sort the vertices such that the order matches the given one.
-   sort_vertices(nodes, graph.copy())
+   nodes = sort_vertices(nodes, graph.copy())
+   
+   nodes_center = get_center_pos(nodes, tW, tH)
    
    # Gets the edges of the graph.
    E = extract_edges(nodes, nodes_center, radius, graph, graph_gray, tW, tH, \

@@ -102,10 +102,17 @@ def is_valid_type(input, function, error = "Error: invalid input!"):
 
 
 # Takes an image, a list of vertices, the size values of the block obtained
-# earlier, and a boolean value indicating if the indices will be displayed,
-# put down a customized block at each of the locations stored in the list on
-# the given image.
-def draw_vertices(graph_display, vertices, tW, tH, show_indices = True):
+# earlier, a boolean value indicating if the indices will be displayed, and
+# another boolean indicating if the program is run in console, put down a
+# customized block at each of the locations stored in the list on the given
+# image.
+def draw_vertices(graph_display, vertices, tW, tH, show_indices = True, using_console = True):
+   if not using_console:
+      rect_color = RECT_COLOR_G
+      font_color = FONT_COLOR_G
+   else:
+      rect_color = RECT_COLOR
+      font_color = FONT_COLOR
    for i in range(len(vertices)):
       position = (vertices[i][0] + int(tW / 3), vertices[i][1] + 
          int(tH * 2 / 3))
@@ -119,19 +126,22 @@ def draw_vertices(graph_display, vertices, tW, tH, show_indices = True):
          position = (x, y)
       if show_indices:
          cv2.putText(graph_display, str(i + BASE), position, 
-            cv2.FONT_HERSHEY_SIMPLEX, FONT_SIZE, FONT_COLOR, FONT_THICKNESS, 
+            cv2.FONT_HERSHEY_SIMPLEX, FONT_SIZE, font_color, FONT_THICKNESS, 
             cv2.LINE_AA)
       cv2.rectangle(graph_display, vertices[i], (vertices[i][0] + tW, 
-         vertices[i][1] + tH), RECT_COLOR, RECT_THICKNESS)
+         vertices[i][1] + tH), rect_color, RECT_THICKNESS)
 
 # Takes a set of edges and a copy of the original image, adds the indices of
 # the edges onto the image, returns the updated version.
-def draw_edges(edges_center, graph_copy):
+def draw_edges(graph_copy, edges_center, using_console = True):
+   if not using_console:
+      font_color = FONT_COLOR_G
+   else:
+      font_color = FONT_COLOR
    for i in range(len(edges_center)):
       cv2.putText(graph_copy, str(i + BASE), (edges_center[i][0],\
                   edges_center[i][1]), cv2.FONT_HERSHEY_SIMPLEX, FONT_SIZE, \
-                  FONT_COLOR, FONT_THICKNESS, cv2.LINE_AA)
-   return graph_copy
+                  font_color, FONT_THICKNESS, cv2.LINE_AA)
       
 # Returns the threshold of color value which is used to distinguish the
 # background and the content.
