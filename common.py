@@ -1,9 +1,10 @@
 '''
 common.py
 Sha Lai
-8/4/2016
+8/30/2016
 
-This file mostly contains the important constants for the main file. Modify only if you know what you are doing.
+This file mostly contains the important constants for the main file.
+Modify only if you know what you are doing.
 '''
 from os import sep
 

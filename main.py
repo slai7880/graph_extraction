@@ -1,7 +1,7 @@
 '''
 main.py
 Sha Lai
-8/26/2016
+8/30/2016
 
 This program interacts with the user in console to use the graph_extraction
 program to retrieve a mathematical graph from a digital image.
@@ -118,6 +118,7 @@ def find_vertices(graph_display, graph_work, template, tW, tH):
          try:
             user_input = int(user_input)
          except:
+            user_input = -1
             print("\nCannot recognize the input, please provide a number.")
             
       locate_vertices(user_input, graph_work, template, tW, tH, nodes)
@@ -272,6 +273,7 @@ def extract_edges(nodes, nodes_center, radius, graph, graph_gray, tW, tH, \
             print("Please answer yes or no.")
             response = ''
    contours = extract_contours(graph_gray, nodes, tW, tH, break_point, thin)
+   print("Number of contours detected: " + str(len(contours)))
    valid = False
    while valid == False:
       print("Please indicate a method to help extract the edges:")

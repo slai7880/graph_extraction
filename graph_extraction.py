@@ -1,7 +1,7 @@
 '''
 main.py
 Sha Lai
-8/26/2016
+8/30/2016
 
 This program helps the user to extract a mathematical graph from a digital
 image and stores the data in some data structure.
@@ -37,9 +37,10 @@ a particular area usually with some color different from the background on the
 image. This can be done by calling the function extract_contours. It firstly
 put a block on each of the vertices so that their pixels will not be taken into
 account, and then it optionally attempts to thin the image using zhang-seun's
-algorithm so that only the skeletons remain. After that it calls another OpenCV
-function findContours to obtain the contours that surround all the lines or
-curves on the thinned image.
+algorithm so that only the skeletons remain. Note that the thinning step may or
+may not improve the accuracy, depending on the image. After that it calls
+another OpenCV function findContours to obtain the contours that surround all
+the lines or curves on the thinned image.
 
 With the contours which are stored as lists of pixels, the user can proceed to
 the next step by using the function get_edges to obtain the edges of the graph.
@@ -354,7 +355,6 @@ def extract_contours(graph_gray, nodes, tW, tH, break_point, thin = True):
    contours_display, contours, hierarchy = cv2.findContours(result, \
       cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
    cv2.drawContours(contours_display, contours, 1, (255, 255, 255), 3)
-   print("Number of contours detected: " + str(len(contours)))
    return contours
 
 # Takes a list of contours, a list of coordinates of the nodes' center and the
