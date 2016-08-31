@@ -294,7 +294,7 @@ def extract_edges(nodes, nodes_center, radius, graph, graph_gray, tW, tH, \
       cv2.startWindowThread()
       cv2.imshow("Edges with Labels", edges_display)
       cv2.waitKey(1)
-      user_input = get_valid_list(user_input, "Indicate non-vertex element " +
+      user_input = get_valid_list(user_input, "Indicate non-edge element " +
                                     "in the list in a sequence of indices " +
                                     "or \"done\" to proceed to next step:\n",\
                                     len(E))

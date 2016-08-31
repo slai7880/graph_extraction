@@ -53,14 +53,16 @@ THRESHOLD = 127
 
 # Indicating the font properties of the numbers displayed on the image.
 FONT_COLOR = (0, 0, 255)
+FONT_COLOR_G = (FONT_COLOR[-1], 0, FONT_COLOR[0])
 FONT_THICKNESS = 1 # must be an integer
 FONT_SIZE = 0.4
 
 # Indicating the label(rectangle) properties.
 RECT_COLOR = (0, 0, 255) # in an order Blue-Green-Red, as opposed to RGB
-# RECT_COLOR = (255, 0, 0) # use this one when running in GUI
+RECT_COLOR_G = (RECT_COLOR[-1], 0, RECT_COLOR[0]) # use this one when running in GUI
 RECT_THICKNESS = 2 # must be an integer
 
 # for GUI only
 OUTPUT_FONT = 8
 GRAPH_SIZE_MAX = (1024, 768)
+OUTPUT_CONSOLE_HEIGHT = 200
