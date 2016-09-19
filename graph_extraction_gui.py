@@ -286,41 +286,11 @@ class Window(QWidget):
                      self.end_sorting()
          except:
             print("Please provide a sequence of valid integers.")
-            
-      # the user answers whether or not they want to thin the image
-      elif self.state == 4:
-         if len(self.input) > 0:
-            if self.input[0] == 'y' or self.input[0] == 'Y':
-               self.extract_contours(True)
-            elif self.input[0] == 'n' or self.input[0] == 'N':
-               self.extract_contours(False)
-            else:
-               print("Please answer y(es) or n(o)!")
-      
-      # the user answers which method to extract edges
-      elif self.state == 4.5:
-         if len(self.input) > 0:
-            if self.input == '1' or self.input == '2':
-               print("Retrieving edge data....")
-               self.E, self.edges_center =\
-                     get_edges(self.contours, self.nodes_center, self.radius,\
-                                 int(self.input))
-               print(len(self.E))
-               
-               # show the image
-               self.update_display(False, True)
-               
-               # start to ask the user to remove false edges
-               print("Please indicate non-edge elements in the list in a " +
-                     "sequence of indices or \"done\" to proceed to next step:")
-               self.state = 5
-            else:
-               print("Invalid input detected!")
       
       # the user can remove the false edges
-      elif self.state == 5:
+      elif self.state == 4:
          if self.input == DONE:
-            self.state = 6
+            self.state = 5
             self.update_display(True, True)
             print("Number of edges detected: " + str(len(self.E)))
             print("Edges:")
@@ -380,20 +350,26 @@ class Window(QWidget):
          draw_vertices(graph_display, self.nodes, self.tW, self.tH, True, False)
          self.loadImage(graph_display)
       self.nodes_center = get_center_pos(self.nodes, self.tW, self.tH)
-      self.state = 4
-      print("Do you want to thin the image?(y/n)")
+      self.extract_contours()
 
    # Takes a boolean value indicating is the image needs to be thinned, stores
    # all the contours in the image.
-   def extract_contours(self, thin):
-      self.contours = extract_contours(self.graph_gray, self.nodes,\
-                                       self.tW, self.tH,\
-                                       self.break_point, thin)
+   def extract_contours(self):
+      self.contours = extract_contours(self.graph_gray, self.nodes_center,\
+                                       self.radius, self.break_point)
       print("Number of contours detected: " + str(len(self.contours)))
-      print("Please indicate a method to help extract the edges:")
-      print("1. Simple")
-      print("2. Normal")
-      self.state = 4.5
+      self.E, self.edges_center =\
+            get_endpoints(self.contours, self.nodes_center, self.radius,\
+                        int(self.input))
+      print(len(self.E))
+      
+      # show the image
+      self.update_display(False, True)
+      
+      # start to ask the user to remove false edges
+      print("Please indicate non-edge elements in the list in a " +
+            "sequence of indices or \"done\" to proceed to next step:")
+      self.state = 4
    
    # Takes two boolean values, update_vertices and update_edges, among which
    # the later has a default value False, updates the displayed image using the
