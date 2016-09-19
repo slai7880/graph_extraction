@@ -92,30 +92,19 @@ For now I have not yet found a really "good" funtion to use as much as I do
 believe that my approach is reasonable.
 '''
 
-
+'''
 from sys import exit
 import numpy as np
 import imutils
 import cv2
 from common import *
 from math import sqrt, inf, fabs, exp, pi, pow
-from scipy.stats import mode
-
+from scipy.stats import mode'''
+from common import *
 ###############################################################################
 #                             Helper Functions                                #
 
-# Prints a list of elements one per line with their indices.
-def print_list(list):
-   """Prints all the elements in the list one per line with an index.
-   Parameters
-   ----------
-   list : list of elements
-   Return
-   ------
-   None
-   """
-   for i in range(len(list)):
-      print(str(i + BASE) + ". " + str(list[i]))
+
 
 
 def draw_vertices(image, nodes, tW, tH, show_indices = True, using_console = True):
@@ -159,8 +148,8 @@ def draw_vertices(image, nodes, tW, tH, show_indices = True, using_console = Tru
          cv2.putText(image, str(i + BASE), position, 
             cv2.FONT_HERSHEY_SIMPLEX, FONT_SIZE, font_color, FONT_THICKNESS, 
             cv2.LINE_AA)
-      cv2.rectangle(image, nodes[i], (vertices[i][0] + tW, 
-         vertices[i][1] + tH), rect_color, RECT_THICKNESS)
+      cv2.rectangle(image, nodes[i], (nodes[i][0] + tW, 
+         nodes[i][1] + tH), rect_color, RECT_THICKNESS)
 
 
 def draw_edges(image, edges_center, using_console = True):
@@ -373,49 +362,7 @@ def thin(image_bin):
 
 ############################  END OF SUBSECTION  ##############################
 
-def get_binary_image(image_gray, break_point, max_value = BIN_MAX):
-   """Converts a given grayscale image into a binary one.
-   Parameters
-   ----------
-   image_gray : numpy matrix of integers
-      A grayscale image.
-   break_point : int
-      Any pixel with a value greater than this value will be set to max_value
-      while the rest will be set to 0.
-   max_value : int
-      Any pixel with a value greater than break_point will be set to this
-      number while the rest will be set to 0.
-   Returns
-   -------
-   result : numpy matrix of integers
-      The reversed binary image.
-   """
-   ret, result = cv2.threshold(image_gray.copy(), break_point, max_value,\
-                                 cv2.THRESH_BINARY)
-   return result
 
-
-def get_binary_image_inv(image_gray, break_point, max_value = BIN_MAX):
-   """Converts a given grayscale image into a binary one but the relative
-   colors of the content and the background are reversed.
-   Parameters
-   ----------
-   image_gray : numpy matrix of integers
-      A grayscale image.
-   break_point : int
-      Any pixel with a value lower than this value will be set to max_value
-      while the rest will be set to 0.
-   max_value : int
-      Any pixel with a value lower than break_point will be set to this number
-      while the rest will be set to 0.
-   Returns
-   -------
-   result : numpy matrix of integers
-      The reversed binary image.
-   """
-   ret, result = cv2.threshold(image_gray.copy(), break_point, max_value,\
-                                 cv2.THRESH_BINARY_INV)
-   return result
 
 
 def denoise(image_bin, method, kernel, itr = 0):
@@ -545,25 +492,24 @@ def get_vector(p_from, p_to):
    return [p_to[0] - p_from[0], p_to[1] - p_from[1]]
 
 
-def get_weight(i, mu, sigma):
+def get_weight(x):
    """Computes the weighting coefficient for a given variable.
    Parameters
    ----------
    i : int
       This serves as the independent variable in the function f(x).
-   mu : float
-      The mean of the weight function.
-   sigma : float
-      The deviation of the weight funtion.
    Returns
    -------
    f(x) : float
       A weighting coefficient.
    """
-   return (exp(-pow(i - mu, 2) / (2 * pow(sigma, 2)) / (sqrt(2 * pi) * sigma)))
+   # using a normal distribution
+   mu = 0
+   sigma = 2
+   return (exp(-pow(x - mu, 2) / (2 * pow(sigma, 2)) / (sqrt(2 * pi) * sigma)))
 
 
-def get_vector_sum(list, mu = 0, sigma = 2):
+def get_vector_sum(list):
    """Computes the weighted sum of a list of vectors. Currently the weight
    function is set to be the normal distribution functino.
    Parameters
@@ -581,8 +527,8 @@ def get_vector_sum(list, mu = 0, sigma = 2):
    """
    result = [0, 0]
    for i in range(len(list)):
-      result[0] += list[-1 - i][0] * get_weight(i, mu, sigma)
-      result[1] += list[-1 - i][1] * get_weight(i, mu, sigma)
+      result[0] += list[-1 - i][0] * get_weight(i)
+      result[1] += list[-1 - i][1] * get_weight(i)
    n = np.linalg.norm(result, 2)
    result[0] /= n
    result[1] /= n
@@ -883,4 +829,4 @@ def get_edge(image_bin, current_pos, trail, known, nodes_center,
          
          
 #                               End of Section                                #
-# =========================================================================== #
+###############################################################################

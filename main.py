@@ -1,7 +1,7 @@
 '''
 main.py
 Sha Lai
-8/30/2016
+9/17/2016
 
 This program interacts with the user in console to use the graph_extraction
 program to retrieve a mathematical graph from a digital image.
@@ -15,11 +15,21 @@ from common import *
 ###############################################################################
 #                              User Interaction                               #
 
-# Takes a directory path and a keyword string as parameters, lists all the
-# files inside the given directory, asks the user to indicate the desired image
-# file to be processed, and returns the image as well as the gray version of
-# the image.
 def get_image(dir_path, keyword):
+   """Interacts with the user to read an image from a provided directory.
+   Parameters
+   ----------
+   dir_path : string
+      The path of the directory which the program should be looking into.
+   keyword : string
+      Specifies the type of content(graph vs template). For printing only.
+   Returns
+   -------
+   image : numpy matrix of integers
+      The original image.
+   image_gray : numpy matrix of integers
+      The grayscale version of the image.
+   """
    image = None
    image_gray = None
    response = ''
@@ -50,12 +60,28 @@ def get_image(dir_path, keyword):
 # Asks the user to provide the names of the images, returns the opencv images
 # of the graph and the template.      
 def get_images(show_graph = False, show_template = False):
+   """Interacts with the user to read the image of the graph as well as that of
+   the template used to locate the vertices.
+   Parameters
+   ----------
+   show_graph and show_template : boolean
+      When set to True, the original graph image or the template will be shown
+      to the user.
+   Returns
+   -------
+   graph and graph_gray : numpy matrix of integers
+      The original graph image and it's grayscale version.
+   template_gray : numpy matrix of integers
+      The grayscale version of the template.
+   break_point : int
+      The value that is used to distinguish the background and the content in
+      the original graph image.
+   """
    graph = None
    graph_gray = None
    template = None
    template_gray = None
-   
-   # involve user interaction
+
    graph, graph_gray = get_image(GRAPH_PATH, "graph") 
    template, template_gray = get_image(TEMPLATE_PATH, "vertex example")
    
@@ -73,6 +99,17 @@ def get_images(show_graph = False, show_template = False):
 # Given a string of user input, a prompt sentence, keep asking the user to
 # provide a list of indices until a valid one(can be DONE) is entered.
 def get_valid_list(user_input, prompt_sentence, list_length):
+   """Keep asking the user to provide a list of indices until a valid one(can
+      be DONE) is entered.
+   Parameters
+   ----------
+   user_input : string
+      The input from the user.
+   promt_sentence : string
+      A string that is used to ask the user.
+   list_length : int
+      The length of the list that is being processed.
+   """
    valid = False
    while valid == False:
       while user_input == '':
@@ -91,18 +128,17 @@ def get_valid_list(user_input, prompt_sentence, list_length):
    return user_input
 
 def hide_vertices(image, nodes_center, radius, color = 0):
+   """Puts a circle filled with the background color on each vertex.
+   Parameters
+   ----------
+   image : numpy matrix of integers
+      The image that is being studied.
+   nodes_center : list of 
+   """
    for n in nodes_center:
       cv2.circle(image, n, int(radius), color, cv2.FILLED)
 
-# Takes a binary image, a string of the window name, a break point value
-# and a max value such that any pixel with value greater than the break_point
-# will become the value of max, displays the binary image.
-def show_binary_image(image_bin, window_name, save = False, break_point = 0, max = 255):
-   image_show = get_binary_image(image_bin, break_point, 255)
-   cv2.imshow(window_name, image_show)
-   cv2.waitKey(1)
-   if save:
-      cv2.imwrite(window_name + SUFFIX, image_show)
+
 
 # Takes a string indicating the shape of the kernel with its first letter, returns
 # the corresponding cv2 constant.

@@ -1,15 +1,28 @@
 '''
 common.py
 Sha Lai
-8/30/2016
+9/17/2016
 
-This file mostly contains the important constants for the main file.
-Modify only if you know what you are doing.
+This file mostly contains the important constants as well as some shared
+functions. Modify with caution.
 '''
-from os import sep
+###############################################################################
+#                                  Imports                                    #
 
-# The path of input images. By default it is an empty string, so the images are
-# in the same folder as the program.
+from os import sep, listdir
+from sys import exit
+import numpy as np
+import imutils
+import cv2
+from math import sqrt, inf, fabs, exp, pi, pow
+from scipy.stats import mode
+
+#                               End of Section                                #
+###############################################################################
+###############################################################################
+#                                 Constants                                   #
+
+# Default directories of the input files.
 GRAPH_PATH = 'graph_input' + str(sep)
 TEMPLATE_PATH = 'vertex_example' + str(sep)
 
@@ -60,14 +73,18 @@ FONT_SIZE = 0.2
 
 # Indicating the label(rectangle) properties.
 RECT_COLOR = (0, 0, 255) # in an order Blue-Green-Red, as opposed to RGB
-RECT_COLOR_G = (RECT_COLOR[-1], 0, RECT_COLOR[0]) # use this one when running in GUI
+RECT_COLOR_G = (RECT_COLOR[-1], 0, RECT_COLOR[0]) # when running in GUI
 RECT_THICKNESS = 2 # must be an integer
 
-# Indicating the shape and size of the kernel when performing erosion/dilation and the times
-# they will be performed, these values depend on the quality of an image.
+# The default shape and size of the kernel when performing erosion/dilation and
+# the times they will be performed, these values depend on the quality of an
+# image.
 KERNEL_SHAPE = "RECT"
 KERNEL_SIZE = (5, 5)
-KERNEL_STR_MAP = {'c' : "CROSS", 'C' : "CROSS", 'e' : "ELLIPSE", 'E' : "ELLIPSE", 'r' : "RECT", 'R' : "RECT"}
+KERNEL_STR_MAP = {'c' : "CROSS", 'C' : "CROSS", 'e' : "ELLIPSE",\
+                  'E' : "ELLIPSE", 'r' : "RECT", 'R' : "RECT"}
+
+# The default iteration amounts of each type of operations.
 DILATION_ITR = 0
 EROSION_ITR = 0
 
@@ -88,6 +105,22 @@ OUTPUT_FONT = 8
 GRAPH_SIZE_MAX = (1024, 768)
 OUTPUT_CONSOLE_HEIGHT = 200
 
+#                               End of Section                                #
+###############################################################################
+###############################################################################
+#                                 Functions                                   #
+
+def print_list(list):
+   """Prints all the elements in the list one per line with an index.
+   Parameters
+   ----------
+   list : list of elements
+   Return
+   ------
+   None
+   """
+   for i in range(len(list)):
+      print(str(i + BASE) + ". " + str(list[i]))
 
 def is_valid_type(input, function, error = "Error: invalid input!"):
    """Checks if the input is valid using a provided function. This is most
@@ -112,3 +145,79 @@ def is_valid_type(input, function, error = "Error: invalid input!"):
    except:
       print(error)
    return is_valid
+
+
+def get_binary_image(image_gray, break_point, max_value = BIN_MAX):
+   """Converts a given grayscale image into a binary one.
+   Parameters
+   ----------
+   image_gray : numpy matrix of integers
+      A grayscale image.
+   break_point : int
+      Any pixel with a value greater than this value will be set to max_value
+      while the rest will be set to 0.
+   max_value : int
+      Any pixel with a value greater than break_point will be set to this
+      number while the rest will be set to 0.
+   Returns
+   -------
+   result : numpy matrix of integers
+      The reversed binary image.
+   """
+   ret, result = cv2.threshold(image_gray.copy(), break_point, max_value,\
+                                 cv2.THRESH_BINARY)
+   return result
+
+
+def get_binary_image_inv(image_gray, break_point, max_value = BIN_MAX):
+   """Converts a given grayscale image into a binary one but the relative
+   colors of the content and the background are reversed.
+   Parameters
+   ----------
+   image_gray : numpy matrix of integers
+      A grayscale image.
+   break_point : int
+      Any pixel with a value lower than this value will be set to max_value
+      while the rest will be set to 0.
+   max_value : int
+      Any pixel with a value lower than break_point will be set to this number
+      while the rest will be set to 0.
+   Returns
+   -------
+   result : numpy matrix of integers
+      The reversed binary image.
+   """
+   ret, result = cv2.threshold(image_gray.copy(), break_point, max_value,\
+                                 cv2.THRESH_BINARY_INV)
+   return result
+
+
+def show_binary_image(image_bin, window_name, save = False, break_point = 0,\
+                        max = 255):
+   """Displays a binary image, optionally saves it to the current directory.
+   Parameters
+   ----------
+   image_bin : numpy matrix of integers
+      The binary image that is asked to be displayed.
+   window_name : string
+      The name of the display window.
+   save : boolean
+      If the value is True then the binary image will be saved as a file.
+   break_point : int
+      Any pixel with a value greater than this value will be set to max
+      while the rest will be set to 0.
+   max_value : int
+      Any pixel with a value greater than break_point will be set to this
+      number while the rest will be set to 0.
+   Returns
+   -------
+   None
+   """
+   image_show = get_binary_image(image_bin, break_point, 255)
+   cv2.imshow(window_name, image_show)
+   cv2.waitKey(1)
+   if save:
+      cv2.imwrite(window_name + SUFFIX, image_show)
+      
+#                               End of Section                                #
+###############################################################################
