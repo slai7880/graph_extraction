@@ -92,20 +92,9 @@ For now I have not yet found a really "good" funtion to use as much as I do
 believe that my approach is reasonable.
 '''
 
-'''
-from sys import exit
-import numpy as np
-import imutils
-import cv2
-from common import *
-from math import sqrt, inf, fabs, exp, pi, pow
-from scipy.stats import mode'''
 from common import *
 ###############################################################################
 #                             Helper Functions                                #
-
-
-
 
 def draw_vertices(image, nodes, tW, tH, show_indices = True, using_console = True):
    """Labels all the located vertices with a frame and optionally an index.
@@ -113,7 +102,7 @@ def draw_vertices(image, nodes, tW, tH, show_indices = True, using_console = Tru
    ----------
    image : numpy matrix of integers
       The image that is will be drawn on.
-   nodes : list of tuples of integers
+   nodes : List[(int, int)]
       Stores the upper-right coordinates of the vertices.
    tW and tH : int
       Dimension values of the template.
@@ -158,7 +147,7 @@ def draw_edges(image, edges_center, using_console = True):
    ----------
    image : numpy matrix of integers
       The image that is will be drawn on.
-   edges_center : list of coordinates
+   edges_center : List[[int, int]]
       Stores the coordinates of center pixel of each edge.
    using_console : boolean
       True if the program is run on the console. This argument is needed since
@@ -227,7 +216,7 @@ def remove_nodes(user_input, nodes):
    ----------
    user_input: string
       A string of edge indices subject to be removed.
-   nodes : list of coordinates
+   nodes : List[(int, int)]
       Each coordinate marks the upper-right corner of a piece of the original
       image.
    Returns
@@ -247,7 +236,7 @@ def get_center_pos(nodes, tW, tH):
    taken by the user in some early step.
    Parameters
    ----------
-   nodes : list of coordinates
+   nodes : List[(int, int)]
       Each coordinate marks the upper-right corner of a piece of the original
       image.
    tW and tH : int
@@ -268,9 +257,9 @@ def remove_edges(user_input, E, edges_center):
    ----------
    user_input: string
       A string of edge indices subject to be removed.
-   E : list of tuples of integers
+   E : List[(int, int)]
       Each tuple contains two indices of the vertices in the vertex list.
-   edges_center : list of coordinates
+   edges_center : List[(int, int)]
       Each element marks the estimated position of the center pixel of an edge.
    Returns
    -------
@@ -392,7 +381,7 @@ def get_neighborhood(image, location):
       The coordinate in the form [x, y] that marks the desired position.
    Returns
    -------
-   p : list of lists of integers
+   p : List[[int, int]]
       Each element is a coordinate in the form [x, y]. The indices are
       associated with the relative positions in the neighborhood in this form:
       8 1 2
@@ -433,7 +422,7 @@ def get_neighborhood_value(image, location):
       The coordinate in the form [x, y] that marks the desired position.
    Returns
    -------
-   p : list of integers
+   p : List[int]
       A list of pixel values in the neighborhood. The indices are associated
       with the relative positions in the neighborhood in this form:
       8 1 2
@@ -467,7 +456,7 @@ def print_neighborhood_values(nv):
    """Prints the pixel values in the neighborhood.
    Parameters
    ----------
-   nv : list of integers
+   nv : List[int]
       Represents the neighborhood pixel values. A neighborhood has the form
       8 1 2
       7 0 3
@@ -514,7 +503,7 @@ def get_vector_sum(list):
    function is set to be the normal distribution functino.
    Parameters
    ----------
-   list : list of lists of integers
+   list : List[[int, int]]
       Each element is a pair of coordinates in the form [x, y].
    mu : float
       The mean of the weight function.
@@ -539,9 +528,9 @@ def is_cross(current_pos, next):
    """Determines if the current position is a cross between two curves.
    Parameters
    ----------
-   current_pos : list of integers
+   current_pos : List[int]
       Stores the current coordinates in the form [x, y].
-   next : list of lists of integers
+   next : List[[int, int]]
       Stores the candidate coordinates each of which is in the form [x, y].
    Returns
    -------
@@ -600,12 +589,12 @@ def locate_vertices(amount, image, template, tW, tH, nodes):
          vertices.
       tW and tH : int
          The dimension values of the template.
-      nodes : list of tuples of integers
+      nodes : List[(int, int)]
          Stores the upper-right coordinate of the vertices  that have been
          detected so far.
       Returns
       -------
-      nodes : list of lists of integers
+      nodes : List[[int, int]]
          This list is returned by reference.
    """
    for i in range(amount):
@@ -644,13 +633,13 @@ def get_endpoints(image_bin, nodes_center, radius):
    image_bin : numpy matrix of integers
       Stores the binary image that are being studied, with contents marked by
       1s and background marked by 0s.
-   nodes_center : list of tuples of integers
+   nodes_center : List[(int, int)]
       Each tuple is the coordinate of the center position of a vertex.
    radius : float
       The radius of the circle block covering the vertices.
    Returns
    -------
-   endpoints : list of lists of integers
+   endpoints : List[[int, int]]
       The ith list in endpoints contains all the pixel coordinates that are the
       starting points of the edges from the ith vertex.
    """
@@ -689,16 +678,16 @@ def get_edge(image_bin, current_pos, trail, known, nodes_center,
    image_bin : numpy matrix of integers
       This is a binary image where 1 represents the content while 0 marks
       the background.
-   current_pos : list of integers
+   current_pos : List[int]
       A two-element list representing the (x, y) coordinate of hte current
       position.
-   trail : list of lists of integers
+   trail : List[[int, int]]
       Each element list in trail represents a coordinate of the pixel
       connecting the current pixel and the starting one.
    known : set of lists of integers
       It stores all the coordinates of the pixels that have been examinied
       so far.
-   nodes_center : list of tuples of integers
+   nodes_center : List[(int, int)]
       Each tuple is the coordinate of the center position of a vertex.
    starting_index : int
       The index of the starting vertex in the vertex list.
@@ -717,7 +706,7 @@ def get_edge(image_bin, current_pos, trail, known, nodes_center,
       each of which marks the index of a vertex in the vertex list will be
       returned. Otherwise a default tuple implying that the attempt fails
       will be returned.
-   trail : list of lists of integers
+   trail : List[[int, int]]
       Each element list in trail represents a coordinate of the pixel
       connecting the current pixel and the starting one.
    """

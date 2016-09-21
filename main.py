@@ -57,8 +57,7 @@ def get_image(dir_path, keyword):
             print("Error: index out of bound!\n")
    return image, image_gray
 
-# Asks the user to provide the names of the images, returns the opencv images
-# of the graph and the template.      
+
 def get_images(show_graph = False, show_template = False):
    """Interacts with the user to read the image of the graph as well as that of
    the template used to locate the vertices.
@@ -96,8 +95,7 @@ def get_images(show_graph = False, show_template = False):
    break_point = get_threshold(graph_gray)
    return graph, graph_gray, template_gray, break_point
 
-# Given a string of user input, a prompt sentence, keep asking the user to
-# provide a list of indices until a valid one(can be DONE) is entered.
+
 def get_valid_list(user_input, prompt_sentence, list_length):
    """Keep asking the user to provide a list of indices until a valid one(can
       be DONE) is entered.
@@ -127,44 +125,63 @@ def get_valid_list(user_input, prompt_sentence, list_length):
                user_input = ''
    return user_input
 
+
 def hide_vertices(image, nodes_center, radius, color = 0):
    """Puts a circle filled with the background color on each vertex.
    Parameters
    ----------
    image : numpy matrix of integers
       The image that is being studied.
-   nodes_center : list of 
+   nodes_center : List[[int, int]]
+      Stores the estimated center coordinates of the vertices.
+   Returns
+   -------
+   None
    """
    for n in nodes_center:
       cv2.circle(image, n, int(radius), color, cv2.FILLED)
 
 
-
-# Takes a string indicating the shape of the kernel with its first letter, returns
-# the corresponding cv2 constant.
-def get_kernel_shape(shape):
-   if shape[0] == 'r' or shape[0] == 'R':
+def get_kernel_shape(shape_str):
+   """Returns the kernel shape constant in OpenCV package.
+   Parameters
+   ----------
+   shape_str : string
+      A string starting with r/R(ectangle), e/E(llipse), or c/C(ross).
+   Returns
+   -------
+   OpenCV shape indicator or None if the parameter is invalid.
+   """
+   if shape_str[0] == 'r' or shape_str[0] == 'R':
       return cv2.MORPH_RECT
-   elif shape[0] == 'e' or shape[0] == 'E':
+   elif shape_str[0] == 'e' or shape_str[0] == 'E':
       return cv2.MORPH_ELLIPSE
-   elif shape[0] == 'c' or shape[0] == 'C':
+   elif shape_str[0] == 'c' or shape_str[0] == 'C':
       return cv2.MORPH_CROSS
    else:
       print("Invalid shape string.")
       return None
 
 
-# Takes three parameters, a graph_display that is used to present to the user
-# a graph_work that is used to perform algorithms, and a template that stores
-# an example of a node. This function first asks the user to give an
-# approximate amount, say n, of vertices in a graph, and then it will find the
-# first n pieces in the graph image that match the template. This step will
-# keep going untill the user enter a 0 as input. Next it will label all the
-# found verteices and ask the user to point out which one(s) may be false, the
-# user must either give a sequence of ingeters indicating the indices of the
-# vertices that they do not want, or type "done" to proceed to the next step.
-def find_vertices(graph_display, graph_work, template, tW, tH):
-   graph_display2 = graph_display.copy() # will be used in the removing part
+def find_vertices(image_display, image_work, template, tW, tH):
+   """Repeated asks the user for the amount of undetected vertices in the
+   graph until all are marked. The false ones can be removed at the end.
+   Parameters
+   ----------
+   image_display : numpy matrix of integers
+      The image that is intended to be displayed to the user.
+   image_work : numpy matrix of integers
+      The image that is intended to be hidden for intermediate process.
+   template : numpy matrix of integers
+      A piece of the original image containing an example of the vertices.
+   tW and tH : int
+      The dimension values of the template.
+   Returns
+   -------
+   nodes : List[(int, int)]
+      Stores the upper-right coordinates of the detected vertices.
+   """
+   image_display2 = image_display.copy() # will be used in the removing part
    nodes = [] # stores the upper-left coordinates of the vertices
    nodes_center = [] # stores the center coordinates of the vertices
    user_input = 1
@@ -185,10 +202,10 @@ def find_vertices(graph_display, graph_work, template, tW, tH):
             user_input = -1
             print("\nCannot recognize the input, please provide a number.")
             
-      locate_vertices(user_input, graph_work, template, tW, tH, nodes)
-      draw_vertices(graph_display, nodes, tW, tH, False)
+      locate_vertices(user_input, image_work, template, tW, tH, nodes)
+      draw_vertices(image_display, nodes, tW, tH, False)
       cv2.startWindowThread()
-      cv2.imshow("Vertices", graph_display)
+      cv2.imshow("Vertices", image_display)
       cv2.waitKey(1)
       print("Current vertices:")
       print_list(nodes)
@@ -199,10 +216,10 @@ def find_vertices(graph_display, graph_work, template, tW, tH):
    # attempts to remove all the false vertices
    user_input = ''
    while not user_input == DONE:
-      graph_display3 = graph_display2.copy()
-      draw_vertices(graph_display3, nodes, tW, tH)
+      image_display3 = image_display2.copy()
+      draw_vertices(image_display3, nodes, tW, tH)
       cv2.startWindowThread()
-      cv2.imshow("Vertices with Labels", graph_display3)
+      cv2.imshow("Vertices with Labels", image_display3)
       cv2.waitKey(1)
       user_input = ''
       user_input = get_valid_list(user_input, "Indicate non-vertex elements " +
@@ -219,13 +236,21 @@ def find_vertices(graph_display, graph_work, template, tW, tH):
    print_list(nodes)
    return nodes
 
-# Takes a list of vertices as the parameter, allows the user to select
-# their prefered method to correct the index of each vertex. When entering
-# the base, the input must be either 0 or 1.
-# Note: the second of sorting is not safe for large size graph since if
-# the user's input, when sorted in order, is not an arithmetic sequence,
-# then the program will be broken.
-def sort_vertices(nodes, graph_display):
+
+def sort_vertices(nodes, image_display):
+   """Interacts with the user to sort the vertices.
+   Parameters
+   ----------
+   nodes : List[(int, int)]
+      Stores the upper-right coordinates of the detected vertices.
+   image_display : numpy matrix of integers
+      The image that is intended to be displayed to the user.
+   Returns
+   -------
+   nodes : List[(int, int)]
+      Stores the upper-right coordinates of the detected vertices while the
+      false ones(decided by the user) has been removed.
+   """
    answer = ''
    while answer == '':
       answer = input("Do you want to sort the vertices? (y/n): ")
@@ -295,10 +320,10 @@ def sort_vertices(nodes, graph_display):
             for i in range(len(index_list)):
                result[index_list[i] - BASE] = nodes[i]
             nodes = result
-            draw_vertices(graph_display, nodes, tW, tH)
+            draw_vertices(image_display, nodes, tW, tH)
             cv2.startWindowThread()
             cv2.destroyWindow("Vertices with Labels")
-            cv2.imshow("Vertices with Labels", graph_display)
+            cv2.imshow("Vertices with Labels", image_display)
             cv2.waitKey(1)
             print("Updated list of vertices:")
             print_list(nodes)
@@ -312,10 +337,23 @@ def sort_vertices(nodes, graph_display):
          print("Please answer with y/n.")
    return nodes
 
-# Takes a gray scale image, a breakpoing value, a list of coordinates of the
-# center of the vertices, and a radius value, interacts with the user to
-# process the image so that noise can be reduced.
+
 def noise_reduction(image_gray, break_point, nodes_center, radius):
+   """This function interacts with the user to help them perform mathematical 
+   morphology operations on the grayscale image, attempting to reduce the noise
+   of the original image.
+   Parameters
+   ----------
+   image_gray : numpy matrix of integers
+      The grayscale version of the original image.
+   break_point : int
+      A value indicating the threshold between the background and the content.
+   nodes_center : List[[int, int]]
+      Stores the estimated center coordinates of the vertices.
+   radius : float
+      A value indicating the size of the block that is used to hide the
+      vertices.
+   """
    image_bin_inv = get_binary_image_inv(image_gray, break_point)
    show_binary_image(image_bin_inv, "Noise Reduction")
    image_stack = []
@@ -329,16 +367,16 @@ def noise_reduction(image_gray, break_point, nodes_center, radius):
    response = ''
    last_step = ''
    result = image_bin_inv
+   print("Current kernel shape and size is: " + kernel_shape_str + str(kernel_size))
+   print("Pelease indicate which operation to perform or adjust the kernel size:")
+   print("(a)djust kernel(this cannot be undone)")
+   print("(c)over vertices")
+   print("(d)ilation")
+   print("(e)rosion")
+   print("(p)roceed")
+   print("(t)hin")
+   print("(u)ndo" + message_stack[-1])
    while len(response) == 0:
-      print("Current kernel shape and size is: " + kernel_shape_str + str(kernel_size))
-      print("Pelease indicate which operation to perform or adjust the kernel size:")
-      print("(a)djust kernel(this cannot be undone)")
-      print("(c)over vertices")
-      print("(d)ilation")
-      print("(e)rosion")
-      print("(p)roceed")
-      print("(t)hin")
-      print("(u)ndo" + message_stack[-1])
       response = input("Your choice is: ")
       if len(response) > 0:
          if response[0] == 'a':
@@ -411,45 +449,72 @@ def noise_reduction(image_gray, break_point, nodes_center, radius):
          else:
             print("Invalid input, please try again!")
             response = ''
+         print("Current kernel shape and size is: " + kernel_shape_str + str(kernel_size))
+         print("Pelease indicate which operation to perform or adjust the kernel size:")
+         print("(a)djust kernel(this cannot be undone)")
+         print("(c)over vertices")
+         print("(d)ilation")
+         print("(e)rosion")
+         print("(p)roceed")
+         print("(t)hin")
+         print("(u)ndo" + message_stack[-1])
    return result
             
 
-# From the contours extracts all edges. For each contour, select the first and
-# the middle element in the list to be the end points of an edge segment, this
-# is because whatever stored in a "contour" is essentially all the pixels that
-# surrounds an edge and luckily the starting element seems to be very close to
-# one of the end points. Then for all the vertices examines the distance from
-# their center to the end points, choosees the vertex whose distance is within
-# the tolerance and is the smallest compared with the rest.
-def extract_edges(graph_work, nodes_center, radius):
+def extract_edges(image_work, nodes_center, radius):
+   """This function attempts to extract all the edges from the image with
+   vertices being hidden.
+   Parameters
+   ----------
+   image_work : numpy matrix of integers
+      The image that is intended to be hidden for intermediate process.
+   nodes_center : List[[int, int]]
+      Stores the estimated center coordinates of the vertices.
+   radius : float
+      A value indicating the size of the block that is used to hide the
+      vertices.
+   Returns
+   -------
+   E : List[(int, int)]
+      Each tuple (a, b) represents an edge connecting vertex a and b.
+   """
    E = []
-   endpoints = get_endpoints(graph_work, nodes_center, radius)
+   endpoints = get_endpoints(image_work, nodes_center, radius)
    trails = []
 
    for i in range(len(endpoints)):
       for j in range(len(endpoints[i])):
-         edge, trail = get_edge(graph_work, endpoints[i][j], [], [], nodes_center, i, radius)
+         edge, trail = get_edge(image_work, endpoints[i][j], [], [], nodes_center, i, radius)
          if edge != PLACE_HOLDER and not edge in E and not (edge[1], edge[0]) in E:
             E.append(edge)
             trails.append(trail)
-   image_temp = np.zeros(graph_work.shape, np.uint8)
+   image_temp = np.zeros(image_work.shape, np.uint8)
    
    
    '''
-   edge, trail = get_edge(graph_work, endpoints[0][0], [], [], nodes_center, 0, endpoints, radius)
+   edge, trail = get_edge(image_work, endpoints[0][0], [], [], nodes_center, 0, endpoints, radius)
    print(edge)
    print(len(trail))
    
    
-   image_temp = np.zeros(graph_work.shape, np.uint8)
+   image_temp = np.zeros(image_work.shape, np.uint8)
    for p in trail:
       image_temp[p[1], p[0]] = 1
    show_binary_image(image_temp, "trails", True)
    '''
    
-   return E, endpoints
+   return E
 
 def display_edges(E):
+   """Shows all the edges.
+   Parameters
+   ----------
+   E : List[(int, int)]
+      Each tuple (a, b) represents an edge connecting vertex a and b.
+   Returns
+   -------
+   None
+   """
    print("Displaying edges....")
    print_list(E)
 
@@ -478,7 +543,7 @@ if __name__ == "__main__":
    complete = False
    while complete == False:
       graph_work = noise_reduction(graph_gray, break_point, nodes_center, radius)
-      E, endpoints = extract_edges(graph_work, nodes_center, radius)
+      E = extract_edges(graph_work, nodes_center, radius)
       display_edges(E)
       user_input = ''
       while len(user_input) == 0:
@@ -489,15 +554,4 @@ if __name__ == "__main__":
             elif user_input[0] != 'y' and user_input[0] != 'Y':
                print("Invalud input, please try again!")
                user_input = ''
-   '''
-   # Gets the edges of the graph.
-   E, endpoints = extract_edges(nodes, nodes_center, radius, graph, graph_gray, tW, tH, \
-                     break_point, 1, 1, 1)
-
-   print("Number of edges detected: " + str(len(E)))
-   print("Edges:")
-   print(E)
-   print_list(endpoints)
-   '''
-   
    halt = input("HALT (press enter to end)")
