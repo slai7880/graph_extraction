@@ -41,8 +41,8 @@ PLACE_HOLDER = (-1, -1)
 # The relative position of the label of each node when displaying them.
 # Alternatively if REL_POS = 'MIDDLE' is active, then the label will be placed
 # around the middle of the frames.
-# REL_POS = (15, 15)
-REL_POS = 'MIDDLE'
+REL_POS = (20, 15)
+# REL_POS = 'MIDDLE'
 
 # The starting index of the vertices or edges when they are displayed and when
 # the user is providing indices.
@@ -69,7 +69,7 @@ THRESHOLD = 127
 FONT_COLOR = (0, 0, 255)
 FONT_COLOR_G = (FONT_COLOR[-1], 0, FONT_COLOR[0])
 FONT_THICKNESS = 1 # must be an integer
-FONT_SIZE = 0.2
+FONT_SIZE = 0.4
 
 # Indicating the label(rectangle) properties.
 RECT_COLOR = (0, 0, 255) # in an order Blue-Green-Red, as opposed to RGB
@@ -214,6 +214,8 @@ def show_binary_image(image_bin, window_name, save = False, break_point = 0,\
    None
    """
    image_show = get_binary_image(image_bin, break_point, 255)
+   cv2.startWindowThread()
+   cv2.namedWindow(window_name)
    cv2.imshow(window_name, image_show)
    cv2.waitKey(1)
    if save:
