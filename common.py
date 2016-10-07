@@ -35,14 +35,15 @@ TEMPLATE = "template"
 DONE = 'done'
 
 # The place holding tuple used for some undetermined coordinate or elements
-# pending to be removed.
-PLACE_HOLDER = (-1, -1)
+# pending to be removed or to be ignored.
+PLACE_HOLDER_INT = -1
+PLACE_HOLDER_COOR = (-1, -1)
 
 # The relative position of the label of each node when displaying them.
 # Alternatively if REL_POS = 'MIDDLE' is active, then the label will be placed
 # around the middle of the frames.
-REL_POS = (20, 15)
-# REL_POS = 'MIDDLE'
+#REL_POS = (20, 15)
+REL_POS = 'MIDDLE'
 
 # The starting index of the vertices or edges when they are displayed and when
 # the user is providing indices.
@@ -69,7 +70,7 @@ THRESHOLD = 127
 FONT_COLOR = (0, 0, 255)
 FONT_COLOR_G = (FONT_COLOR[-1], 0, FONT_COLOR[0])
 FONT_THICKNESS = 1 # must be an integer
-FONT_SIZE = 0.4
+FONT_SIZE = 0.5
 
 # Indicating the label(rectangle) properties.
 RECT_COLOR = (0, 0, 255) # in an order Blue-Green-Red, as opposed to RGB
@@ -82,7 +83,7 @@ RECT_THICKNESS = 2 # must be an integer
 KERNEL_SHAPE = "RECT"
 KERNEL_SIZE = (5, 5)
 KERNEL_STR_MAP = {'c' : "CROSS", 'C' : "CROSS", 'e' : "ELLIPSE",\
-                  'E' : "ELLIPSE", 'r' : "RECT", 'R' : "RECT"}
+                  'E' : "ELLIPSE", 'r' : "RECTANGLE", 'R' : "RECTANGLE"}
 
 # The default iteration amounts of each type of operations.
 DILATION_ITR = 0

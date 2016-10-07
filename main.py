@@ -191,7 +191,7 @@ def find_vertices(image_display, image_work, template, tW, tH):
       try:
          user_input = int(user_input)
       except:
-         user_input = -1
+         user_input = PLACE_HOLDER_INT
          print("Cannot recognize the input, please provide a number.")
       while user_input < 0:
          user_input = input("How many vertices are you looking for?(0 means" + 
@@ -199,7 +199,7 @@ def find_vertices(image_display, image_work, template, tW, tH):
          try:
             user_input = int(user_input)
          except:
-            user_input = -1
+            user_input = PLACE_HOLDER_INT
             print("\nCannot recognize the input, please provide a number.")
             
       locate_vertices(user_input, image_work, template, tW, tH, nodes)
@@ -278,7 +278,8 @@ def sort_vertices(nodes, image_display):
                   while valid == False:
                      index = input("What's the correct index value of the " + 
                         "vertex " + str(BASE + i) + ". " + str(nodes[i]) + "? ")
-                     if is_valid_type(index, int, "Please provide a valid integer."):
+                     if is_valid_type(index, int, "Please provide a valid " +
+                                       "integer."):
                         index = int(index)
                         if index < BASE or index >= BASE + len(nodes):
                            print("Error: index out of bound!\n")
@@ -309,13 +310,15 @@ def sort_vertices(nodes, image_display):
                               index_list.append(int(indices[i]))
                         if len(index_list) == len(nodes):
                            if not max(index_list) + 1 - BASE == len(index_list):
-                              print("The given input is not a valid arithmetic sequence!")
+                              print("The given input is not a valid " +
+                                    "arithmetic sequence!")
                            else:
                               valid = True
                   except:
                      print("Please provide a sequence of valid integers.")
             else:
-               print("Cannot sort the vertices, check the method indicating value.")
+               print("Cannot sort the vertices, check the method indicating " +
+                     "value.")
                exit(1)
             for i in range(len(index_list)):
                result[index_list[i] - BASE] = nodes[i]
@@ -367,8 +370,9 @@ def noise_reduction(image_gray, break_point, nodes_center, radius):
    response = ''
    last_step = ''
    result = image_bin_inv
-   print("Current kernel shape and size is: " + kernel_shape_str + str(kernel_size))
-   print("Pelease indicate which operation to perform or adjust the kernel size:")
+   print("Current kernel shape and size is: " + kernel_shape_str +
+         str(kernel_size))
+   print("Pelease indicate which operation to perform:")
    print("(a)djust kernel(this cannot be undone)")
    print("(c)over vertices")
    print("(d)ilation")
@@ -399,7 +403,8 @@ def noise_reduction(image_gray, break_point, nodes_center, radius):
                new_size = input("Enter the new kernel size as a single integer: ")
                if is_valid_type(new_size, int):
                   new_size = int(new_size)
-                  if new_size > min(image_gray.shape[0], image_gray.shape[1]) or new_size <= 0:
+                  if new_size > min(image_gray.shape[0], image_gray.shape[1])\
+                     or new_size <= 0:
                      print("Please provide a valid integer!")
                      new_size = ''
                   else:
@@ -449,8 +454,9 @@ def noise_reduction(image_gray, break_point, nodes_center, radius):
          else:
             print("Invalid input, please try again!")
             response = ''
-         print("Current kernel shape and size is: " + kernel_shape_str + str(kernel_size))
-         print("Pelease indicate which operation to perform or adjust the kernel size:")
+         print("Current kernel shape and size is: " + kernel_shape_str +
+               str(kernel_size))
+         print("Pelease indicate which operation to perform:")
          print("(a)djust kernel(this cannot be undone)")
          print("(c)over vertices")
          print("(d)ilation")
@@ -484,15 +490,18 @@ def extract_edges(image_work, nodes_center, radius):
 
    for i in range(len(endpoints)):
       for j in range(len(endpoints[i])):
-         edge, trail = get_edge(image_work, endpoints[i][j], [], [], nodes_center, i, radius)
-         if edge != PLACE_HOLDER and not edge in E and not (edge[1], edge[0]) in E:
+         edge, trail = get_edge(image_work, endpoints[i][j], [], [],\
+                                 nodes_center, i, radius)
+         if edge != PLACE_HOLDER_COOR and not edge in E and\
+            not (edge[1], edge[0]) in E:
             E.append(edge)
             trails.append(trail)
    image_temp = np.zeros(image_work.shape, np.uint8)
    
    
    '''
-   edge, trail = get_edge(image_work, endpoints[0][0], [], [], nodes_center, 0, endpoints, radius)
+   edge, trail = get_edge(image_work, endpoints[0][0], [], [], nodes_center,\
+                           0, endpoints, radius)
    print(edge)
    print(len(trail))
    
@@ -532,8 +541,7 @@ if __name__ == "__main__":
    
    # Find all the vertices. In particular variable nodes stores a list of
    # nodes' upper-right corner.
-   nodes = find_vertices(graph.copy(), graph_gray.copy(), \
-      template, tW, tH)
+   nodes = find_vertices(graph.copy(), graph_gray.copy(), template, tW, tH)
    
    # If neccesary, sort the vertices such that the order matches the given one.
    nodes = sort_vertices(nodes, graph.copy())
@@ -541,13 +549,14 @@ if __name__ == "__main__":
    nodes_center = get_center_pos(nodes, tW, tH)
    
    complete = False
-   while complete == False:
-      graph_work = noise_reduction(graph_gray, break_point, nodes_center, radius)
+   while not complete:
+      graph_work = noise_reduction(graph_gray, break_point, nodes_center,\
+                                    radius)
       E = extract_edges(graph_work, nodes_center, radius)
       display_edges(E)
       user_input = ''
       while len(user_input) == 0:
-         user_input = input("Is it necessary to attempt again?(y/n)")
+         user_input = input("Attempt again?(y/n)")
          if len(user_input) > 0:
             if user_input[0] == 'n' or user_input[0] == 'N':
                complete = True

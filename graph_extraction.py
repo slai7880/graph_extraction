@@ -226,8 +226,8 @@ def remove_nodes(user_input, nodes):
    """
    index_remove = user_input.split()
    for i in index_remove:
-      nodes[int(i) - BASE] = PLACE_HOLDER
-   nodes = [element for element in nodes if element != PLACE_HOLDER]
+      nodes[int(i) - BASE] = PLACE_HOLDER_COOR
+   nodes = [element for element in nodes if element != PLACE_HOLDER_COOR]
    return nodes
 
 
@@ -388,9 +388,10 @@ def get_neighborhood(image, location):
       7 0 3
       6 5 4
       Additionally if the location happens to be on an edge or a corner of the
-      image then [-1, -1] will be used for out-of-reach points.
+      image then [PLACE_HOLDER_INT, PLACE_HOLDER_INT] will be used for
+      out-of-reach points.
    """
-   temp = [-1, -1]
+   temp = [PLACE_HOLDER_INT, PLACE_HOLDER_INT]
    p = [temp[:]] * 9
    p[0] = location[:]
    if location[1] - 1 >= 0:
@@ -429,9 +430,10 @@ def get_neighborhood_value(image, location):
       7 0 3
       6 5 4
       Additionally is the current position happens to be on an edge or a corner
-      of the image then -1 will be used to represent the pixel value.
+      of the image then PLACE_HOLDER_INT will be used to represent the pixel
+      value.
    """
-   p = [-1] * 9
+   p = [PLACE_HOLDER_INT] * 9
    p[0] = image[location[1], location[0]]
    if location[1] - 1 >= 0:
       p[1] = image[location[1] - 1, location[0]]
@@ -485,7 +487,7 @@ def get_weight(x):
    """Computes the weighting coefficient for a given variable.
    Parameters
    ----------
-   i : int
+   x : int
       This serves as the independent variable in the function f(x).
    Returns
    -------
@@ -493,9 +495,10 @@ def get_weight(x):
       A weighting coefficient.
    """
    # using a normal distribution
-   mu = 0
+   mu = 1
    sigma = 2
-   return (exp(-pow(x - mu, 2) / (2 * pow(sigma, 2)) / (sqrt(2 * pi) * sigma)))
+   f = (exp(-pow(x - mu, 2) / (2 * pow(sigma, 2)) / (sqrt(2 * pi) * sigma)))
+   return f
 
 
 def get_vector_sum(list):
@@ -736,7 +739,7 @@ def get_edge(image_bin, current_pos, trail, known, nodes_center,
       #print("End of the line.")
       #print_neighborhood_values(nv)
       #cv2.circle(image_bin, current_pos, 5, 1, cv2.FILLED)
-      return PLACE_HOLDER, trail
+      return PLACE_HOLDER_COOR, trail
    else: # if there is at least one possibly unknown pixel ahead
       if len(trail) == 0: # this is a starting point
          #print("This is just a start.")
@@ -745,9 +748,9 @@ def get_edge(image_bin, current_pos, trail, known, nodes_center,
             edge, new_trail = get_edge(image_bin, n[i], [current_pos], known,\
                                        nodes_center, starting_index, radius,\
                                        is_joint, image_debug)
-            if edge != PLACE_HOLDER: # returns the found edge immediately
+            if edge != PLACE_HOLDER_COOR: # returns the found edge immediately
                return edge, new_trail
-         return PLACE_HOLDER, trail
+         return PLACE_HOLDER_COOR, trail
       else: # we are in the middle of some edge
          if len(candidate_indices) == 1: # no choice to make, go for the next
             if is_joint == False:
@@ -804,10 +807,10 @@ def get_edge(image_bin, current_pos, trail, known, nodes_center,
                cos2next[cos_theta] = n[i]
             keys_list = list(cos2next.keys())
             keys_list.sort()
-            result = PLACE_HOLDER
+            result = PLACE_HOLDER_COOR
             new_trail = trail[:]
             temp = 0
-            while result == PLACE_HOLDER and temp < len(keys_list):
+            while result == PLACE_HOLDER_COOR and temp < len(keys_list):
                result, new_trail = get_edge(image_bin,\
                                              cos2next[keys_list[-1 - temp]],\
                                              trail, known, nodes_center,\
