@@ -573,8 +573,8 @@ def process_template(template):
    
    # this will serve as a threshold of the distance from some end point of
    # an edge to the center of a vertex
-   radius = sqrt(pow((1 + 2 * SCALE_PERCENTAGE) * tH, 2) + pow((1 + 
-      2 * SCALE_PERCENTAGE) * tW, 2)) / 2
+   radius = sqrt(pow((1 + SCALE_PERCENTAGE) * tH, 2) + pow((1 + 
+      SCALE_PERCENTAGE) * tW, 2)) / 2
    return template, (tH, tW), radius
 
 
