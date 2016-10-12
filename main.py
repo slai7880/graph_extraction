@@ -319,7 +319,7 @@ def sort_vertices(nodes, image_display):
             else:
                print("Cannot sort the vertices, check the method indicating " +
                      "value.")
-               exit(1)
+               sys.exit(1)
             for i in range(len(index_list)):
                result[index_list[i] - BASE] = nodes[i]
             nodes = result
@@ -366,7 +366,7 @@ def noise_reduction(image_gray, break_point, nodes_center, radius):
    kernel_shape_str = KERNEL_SHAPE
    kernel_shape = get_kernel_shape(kernel_shape_str)
    kernel_size = KERNEL_SIZE
-   kernel = cv2.getStructuringElement(kernel_shape,kernel_size)
+   kernel = cv2.getStructuringElement(kernel_shape, kernel_size)
    response = ''
    last_step = ''
    result = image_bin_inv
@@ -532,7 +532,7 @@ def display_edges(E):
 ###############################################################################
 #                              Executing Codes                                #
 
-if __name__ == "__main__":
+if __name__ == "__main__":   
    # Obtain the files.
    graph, graph_gray, template, break_point = get_images(True)
    

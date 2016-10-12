@@ -197,7 +197,7 @@ def get_threshold(image_gray, show_detail = False):
          print('mode = ' + str(mode(mode(image_gray)[0][0])[0][0]))
       return mode(mode(image_gray)[0][0])[0][0] - 1
    else:
-      exit('Cannot recognize the METHOD, please check the common file.')
+      sys.exit('Cannot recognize the METHOD, please check the common file.')
 
 
 def get_distance(p1, p2):
