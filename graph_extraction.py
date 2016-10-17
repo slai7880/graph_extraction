@@ -96,8 +96,8 @@ from common import *
 ###############################################################################
 #                             Helper Functions                                #
 
-def draw_vertices(image, nodes, tW, tH, show_indices = True, using_console = True):
-   """Labels all the located vertices with a frame and optionally an index.
+def highlight_vertices(image, nodes, tW, tH):
+   """Highlights each vertex with a frame.
    Parameters
    ----------
    image : numpy matrix of integers
@@ -116,30 +116,25 @@ def draw_vertices(image, nodes, tW, tH, show_indices = True, using_console = Tru
    None
       Everything will be drawn on the given image.
    """
-   if not using_console:
-      rect_color = RECT_COLOR_G
-      font_color = FONT_COLOR_G
-   else:
-      rect_color = RECT_COLOR
-      font_color = FONT_COLOR
    for i in range(len(nodes)):
-      position = (nodes[i][0] + int(tW / 3), nodes[i][1] + 
-         int(tH * 2 / 3))
-      if not isinstance(REL_POS, str):
-         x = abs(nodes[i][0] + REL_POS[0])
-         y = abs(nodes[i][1] + REL_POS[1])
-         if x >= image.shape[1]:
-            x -= 2 * REL_POS[0]
-         if y >= image.shape[0]:
-            y -= 2 * REL_POS[1]
-         position = (x, y)
-      if show_indices:
-         cv2.putText(image, str(i + BASE), position, 
-            cv2.FONT_HERSHEY_SIMPLEX, FONT_SIZE, font_color, FONT_THICKNESS, 
-            cv2.LINE_AA)
-      cv2.rectangle(image, nodes[i], (nodes[i][0] + tW, 
-         nodes[i][1] + tH), rect_color, RECT_THICKNESS)
+      cv2.rectangle(image, nodes[i], (nodes[i][0] + tW,  nodes[i][1] + tH),
+                     RECT_COLOR, RECT_THICKNESS)
 
+def label_vertices(image, ref_pos, rel_pos, font_size = FONT_SIZE, font_thinkness = FONT_THICKNESS):
+   """Labels all the vertices with indices.
+   
+   """
+   
+   for i in range(len(ref_pos)):
+      x = abs(ref_pos[i][0] + rel_pos[0])
+      y = abs(ref_pos[i][1] + rel_pos[1])
+      if x >= image.shape[1]:
+         x -= 2 * rel_pos[0]
+      if y >= image.shape[0]:
+         y -= 2 * rel_pos[1]
+      position = (x, y)
+      cv2.putText(image, str(i + BASE), position, cv2.FONT_HERSHEY_SIMPLEX,\
+         font_size, FONT_COLOR, font_thinkness, cv2.LINE_AA, False)
 
 def draw_edges(image, edges_center, using_console = True):
    """Puts a label near the center pixel of each edge.
@@ -597,7 +592,7 @@ def locate_vertices(amount, image, template, tW, tH, nodes):
          detected so far.
       Returns
       -------
-      nodes : List[[int, int]]
+      nodes : List[(int, int)]
          This list is returned by reference.
    """
    for i in range(amount):
