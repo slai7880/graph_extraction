@@ -120,11 +120,25 @@ def highlight_vertices(image, nodes, tW, tH):
       cv2.rectangle(image, nodes[i], (nodes[i][0] + tW,  nodes[i][1] + tH),
                      RECT_COLOR, RECT_THICKNESS)
 
-def label_vertices(image, ref_pos, rel_pos, font_size = FONT_SIZE, font_thinkness = FONT_THICKNESS):
+def label_vertices(image, ref_pos, rel_pos, font_size = FONT_SIZE,
+                  font_thinkness = FONT_THICKNESS):
    """Labels all the vertices with indices.
-   
+   Parameters
+   ----------
+   image : numpy matrix of integers
+      The image that will be used to labeled.
+   ref_pos : List[(int, int)]
+      List of original coordinates for each vertex(the top-right corner).
+   rel_pos : (int, int)
+      Coordinates relaive to the original ones.
+   font_size : float
+      Indicating the font size.
+   font_thickness : int
+      Indicating how thick the text is.
+   Returns
+   -------
+   None
    """
-   
    for i in range(len(ref_pos)):
       x = abs(ref_pos[i][0] + rel_pos[0])
       y = abs(ref_pos[i][1] + rel_pos[1])
