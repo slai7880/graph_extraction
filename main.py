@@ -86,10 +86,12 @@ def get_images(show_graph = False, show_template = False):
    
    if show_graph:
       cv2.startWindowThread()
+      cv2.namedWindow(GRAPH)
       cv2.imshow(GRAPH, graph)
       cv2.waitKey(1)
    if show_template:
       cv2.startWindowThread()
+      cv2.namedWindow(TEMPLATE)
       cv2.imshow(TEMPLATE, template)
       cv2.waitKey(1)
    break_point = get_threshold(graph_gray)
@@ -282,6 +284,12 @@ def find_vertices(image_display, image_work, template, tW, tH):
    -------
    nodes : List[(int, int)]
       Stores the upper-right coordinates of the detected vertices.
+   rel_pos : (int, int)
+      Stores the coordinates relative to each point in ref_pos.
+   font_size : float
+      Stores the font size value.
+   font_thickness : int
+      Stores the font thickness value.
    """
    image_display2 = image_display.copy()
    nodes = [] # stores the upper-left coordinates of the vertices
@@ -295,12 +303,13 @@ def find_vertices(image_display, image_work, template, tW, tH):
          if is_valid_type(user_input, int, "Cannot recognize the input, " +
                            "please provide a number."):
             user_input = int(user_input)
-            if user_input > 0:
+            if user_input >= 0:
                locate_vertices(user_input, image_work, template, tW, tH, nodes)
                highlight_vertices(image_display2, nodes, tW, tH)
                image_display3 = image_display2.copy()
                label_vertices(image_display3, nodes, rel_pos)
                cv2.startWindowThread()
+               cv2.namedWindow("Vertices")
                cv2.imshow("Vertices", image_display3)
                cv2.waitKey(1)
                print("Current vertices:")
@@ -316,6 +325,7 @@ def find_vertices(image_display, image_work, template, tW, tH):
    
 
    cv2.startWindowThread()
+   cv2.namedWindow("Vertices with Labels")
    cv2.imshow("Vertices with Labels", image_display3)
    cv2.waitKey(1)
    rel_pos, font_size, font_thickness = adjust_labels(image_display2.copy(),
@@ -328,6 +338,7 @@ def find_vertices(image_display, image_work, template, tW, tH):
       highlight_vertices(image_display4, nodes, tW, tH)
       label_vertices(image_display4, nodes, rel_pos, font_size, font_thickness)
       cv2.startWindowThread()
+      cv2.namedWindow("Vertices with Labels")
       cv2.imshow("Vertices with Labels", image_display4)
       cv2.waitKey(1)
       user_input = ''
@@ -343,10 +354,10 @@ def find_vertices(image_display, image_work, template, tW, tH):
    
    print("Current vertices:")
    print_list(nodes)
-   return nodes
+   return nodes, rel_pos, font_size, font_thickness
 
 
-def sort_vertices(nodes, image_display):
+def sort_vertices(nodes, image_display, window_name, rel_pos, font_size, font_thickness):
    """Interacts with the user to sort the vertices.
    Parameters
    ----------
@@ -354,6 +365,14 @@ def sort_vertices(nodes, image_display):
       Stores the upper-right coordinates of the detected vertices.
    image_display : numpy matrix of integers
       The image that is intended to be displayed to the user.
+   window_name : string
+      The name of the window that is used to display the image.
+   rel_pos : (int, int)
+      Stores the coordinates relative to each point in ref_pos.
+   font_size : float
+      Stores the font size value.
+   font_thickness : int
+      Stores the font thickness value.
    Returns
    -------
    nodes : List[(int, int)]
@@ -433,9 +452,11 @@ def sort_vertices(nodes, image_display):
                result[index_list[i] - BASE] = nodes[i]
             nodes = result
             highlight_vertices(image_display, nodes, tW, tH)
+            label_vertices(image_display, nodes, rel_pos, font_size,
+                           font_thickness)
             cv2.startWindowThread()
-            cv2.destroyWindow("Vertices with Labels")
-            cv2.imshow("Vertices with Labels", image_display)
+            cv2.namedWindow(window_name)
+            cv2.imshow(window_name, image_display)
             cv2.waitKey(1)
             print("Updated list of vertices:")
             print_list(nodes)
@@ -650,10 +671,12 @@ if __name__ == "__main__":
    
    # Find all the vertices. In particular variable nodes stores a list of
    # nodes' upper-right corner.
-   nodes = find_vertices(graph.copy(), graph_gray.copy(), template, tW, tH)
+   nodes, rel_pos, font_size, font_thickness =\
+      find_vertices(graph.copy(), graph_gray.copy(), template, tW, tH)
    
    # If neccesary, sort the vertices such that the order matches the given one.
-   nodes = sort_vertices(nodes, graph.copy())
+   nodes = sort_vertices(nodes, graph.copy(), "Vertices with Labels", rel_pos,
+                           font_size, font_thickness)
    
    nodes_center = get_center_pos(nodes, tW, tH)
    
