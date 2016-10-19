@@ -324,7 +324,7 @@ def find_vertices(image_display, image_work, template, tW, tH):
    # attempts to remove all the false vertices
    user_input = ''
    while not user_input == DONE:
-      image_display4 = image_display2.copy()
+      image_display4 = image_display.copy()
       highlight_vertices(image_display4, nodes, tW, tH)
       label_vertices(image_display4, nodes, rel_pos, font_size, font_thickness)
       cv2.startWindowThread()
