@@ -44,7 +44,14 @@ def get_image(dir_path, keyword):
          index = int(response)
          if index >= 0 + BASE and index < len(input_dir) + BASE:
             try:
-               image = cv2.imread(dir_path + input_dir[index - BASE])
+               image = cv2.imread(dir_path + input_dir[index - BASE], -1)
+               # change all the transparent pixels to background ones
+               for i in range(image.shape[0]):
+                  for j in range(image.shape[1]):
+                     if image[i][j][3] == 0:
+                        image[i][j][0] = 255
+                        image[i][j][1] = 255
+                        image[i][j][2] = 255
                image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
                valid = True
                print("Selected " + keyword + " file: " + 
@@ -616,6 +623,9 @@ def extract_edges(image_work, nodes_center, radius):
    """
    E = []
    endpoints = get_endpoints(image_work, nodes_center, radius)
+   deg_seq = []
+   for i in range(len(endpoints)):
+      deg_seq.append(len(endpoints[i]))
    trails = []
 
    for i in range(len(endpoints)):
@@ -642,7 +652,7 @@ def extract_edges(image_work, nodes_center, radius):
    show_binary_image(image_temp, "trails", True)
    '''
    
-   return E
+   return E, deg_seq
 
 def display_edges(E):
    """Shows all the edges.
@@ -684,7 +694,7 @@ if __name__ == "__main__":
    while not complete:
       graph_work = noise_reduction(graph_gray, break_point, nodes_center,\
                                     radius)
-      E = extract_edges(graph_work, nodes_center, radius)
+      E, deg_seq = extract_edges(graph_work, nodes_center, radius)
       display_edges(E)
       user_input = ''
       while len(user_input) == 0:
