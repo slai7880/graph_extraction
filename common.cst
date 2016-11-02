@@ -12,6 +12,9 @@ TEMPLATE_PATH = 'vertex_example' + str(sep)
 # Some default window names.
 GRAPH = "graph"
 TEMPLATE = "template"
+BLACK_AND_WHITE = "Balck and White"
+VERTICES = "Vertices"
+VERTICES_W_LBL = "Vertices with Labels"
 
 # The input indicating that the step is complete, only used to test uesr input.
 DONE = 'done'
@@ -55,8 +58,8 @@ FONT_THICKNESS = 1 # must be an integer
 FONT_SIZE = 0.5
 
 # Indicating the label(rectangle) properties.
-RECT_COLOR = (0, 0, 255) # in an order Blue-Green-Red, as opposed to RGB
-RECT_COLOR_G = (RECT_COLOR[-1], 0, RECT_COLOR[0]) # when running in GUI
+RECT_COLOR_C = (255, 255, 255) # for cropping, in an order Blue-Green-Red, as opposed to RGB
+RECT_COLOR = (0, 0, 255) # for labeling
 RECT_THICKNESS = 2 # must be an integer
 
 # The default shape and size of the kernel when performing erosion/dilation and

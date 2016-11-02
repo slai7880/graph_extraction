@@ -13,59 +13,9 @@ from graph_extraction import *
 from common import *
 
 ###############################################################################
-#                              User Interaction                               #
+#                               Helper Functions                              #
 
-def get_image(dir_path, keyword):
-   """Interacts with the user to read an image from a provided directory.
-   Parameters
-   ----------
-   dir_path : string
-      The path of the directory which the program should be looking into.
-   keyword : string
-      Specifies the type of content(graph vs template). For printing only.
-   Returns
-   -------
-   image : numpy matrix of integers
-      The original image.
-   image_gray : numpy matrix of integers
-      The grayscale version of the image.
-   """
-   image = None
-   image_gray = None
-   response = ''
-   valid = False
-   while response == '' or valid == False:
-      input_dir = listdir(dir_path)
-      print("Files in the input directory:")
-      print_list(input_dir)
-      response = input("Please provide the file by index of the " + keyword + 
-         ": ")
-      if is_valid_type(response, int, "Please provide an integer!"):
-         index = int(response)
-         if index >= 0 + BASE and index < len(input_dir) + BASE:
-            try:
-               image = cv2.imread(dir_path + input_dir[index - BASE], -1)
-               # change all the transparent pixels to background ones
-               for i in range(image.shape[0]):
-                  for j in range(image.shape[1]):
-                     if image[i][j][3] == 0:
-                        image[i][j][0] = 255
-                        image[i][j][1] = 255
-                        image[i][j][2] = 255
-               image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-               valid = True
-               print("Selected " + keyword + " file: " + 
-                  str(input_dir[index - BASE]))
-            except:
-               print("Error: the " + keyword + " file is invalid or \
-                  cannot be processed.")
-               response = ''
-         else:
-            print("Error: index out of bound!\n")
-   return image, image_gray
-
-
-def get_images(show_graph = False, show_template = False):
+def get_image(show_graph = False):
    """Interacts with the user to read the image of the graph as well as that of
    the template used to locate the vertices.
    Parameters
@@ -85,24 +35,45 @@ def get_images(show_graph = False, show_template = False):
    """
    graph = None
    graph_gray = None
-   template = None
-   template_gray = None
-
-   graph, graph_gray = get_image(GRAPH_PATH, "graph") 
-   template, template_gray = get_image(TEMPLATE_PATH, "vertex example")
+   
+   response = ''
+   valid = False
+   while response == '' or valid == False:
+      input_dir = listdir(GRAPH_PATH)
+      print("Files in the input directory:")
+      print_list(input_dir)
+      response = input("Please provide the file by index of the graph: ")
+      if is_valid_type(response, int, "Please provide an integer!"):
+         index = int(response)
+         if index >= 0 + BASE and index < len(input_dir) + BASE:
+            try:
+               graph = cv2.imread(dir_path + input_dir[index - BASE], -1)
+               # change all the transparent pixels to background ones
+               if graph.shape[0] > 0 and graph.shape[1] > 0 and\
+                  len(graph[0][0]) == 4:
+                  for i in range(graph.shape[0]):
+                     for j in range(graph.shape[1]):
+                        if graph[i][j][3] == 0:
+                           graph[i][j][0] = 255
+                           graph[i][j][1] = 255
+                           graph[i][j][2] = 255
+               graph_gray = cv2.cvtColor(graph, cv2.COLOR_BGR2GRAY)
+               valid = True
+               print("Selected graph file: " + str(input_dir[index - BASE]))
+            except:
+               print("Error: the graph file is invalid or cannot be processed.")
+               response = ''
+         else:
+            print("Error: index out of bound!\n")
    
    if show_graph:
       cv2.startWindowThread()
       cv2.namedWindow(GRAPH)
       cv2.imshow(GRAPH, graph)
       cv2.waitKey(1)
-   if show_template:
-      cv2.startWindowThread()
-      cv2.namedWindow(TEMPLATE)
-      cv2.imshow(TEMPLATE, template)
-      cv2.waitKey(1)
+
    break_point = get_threshold(graph_gray)
-   return graph, graph_gray, template_gray, break_point
+   return graph, graph_gray, break_point
 
 
 def get_valid_list(user_input, prompt_sentence, list_length):
@@ -272,11 +243,190 @@ def adjust_labels(image_display, window_name, ref_pos, rel_pos,
          print("Invalid command, please try again.")
          user_input = ''
    return rel_pos, font_size, font_thickness
-         
+
+
+################################ GUI Subsection ###############################
+# The first two functions are event handlers.
+def crop(event, x, y, flags, image):
+   """Crops a piece of the image.
+   """
+   global ix, iy, drawing, cont, image_c, template
+   if event == cv2.EVENT_LBUTTONDOWN:
+      ix, iy = x, y
+      drawing = True
+   elif event == cv2.EVENT_MOUSEMOVE:
+      if drawing == True:
+         image_c = image.copy()
+         cv2.rectangle(image_c, (ix, iy), (x, y), RECT_COLOR_C, RECT_THICKNESS)
+   elif event == cv2.EVENT_LBUTTONUP:
+      drawing = False
+      cv2.rectangle(image_c, (ix, iy), (x, y), RECT_COLOR_C, RECT_THICKNESS)
+      tW = abs(ix - x)
+      tH = abs(iy - y)
+      template = image[min(iy, y) : min(iy, y) + tH, min(ix, x) : min(ix, x) + tW]
+   elif event == cv2.EVENT_RBUTTONUP:
+      cont = False
+      cv2.destroyWindow(BLACK_AND_WHITE)
+      
+def select(event, x, y, flags, image):
+   global cont, image_c, nodes, tW, tH
+   if event == cv2.EVENT_MOUSEMOVE:
+      image_c = image.copy()
+      cv2.rectangle(image_c, (x - int(tW / 2), y - int(tH / 2)),
+         (x - int(tW / 2) + tW, y - int(tH / 2) + tH), RECT_COLOR, RECT_THICKNESS)
+   elif event == cv2.EVENT_LBUTTONDOWN:
+      cv2.rectangle(image, (x - int(tW / 2), y - int(tH / 2)),
+         (x - int(tW / 2) + tW, y - int(tH / 2) + tH), RECT_COLOR, RECT_THICKNESS)
+      nodes.append((x - int(tW / 2), y - int(tH / 2)))
+   elif event == cv2.EVENT_RBUTTONUP:
+      cont = False
+
+
+def initiate_UI(image, window_name, function):
+   """Makes a certain window interactable for user to perform some task.
+   Parameters
+   ----------
+   image : numpy matrix of integers
+      The image that will be interacted by the user.
+   window_name : string
+      The name of the window.
+   function : python function
+      This should be one of the functions defined in this subsection.
+   Returns
+   -------
+   None
+   """
+   global cont, image_c
+   cv2.namedWindow(window_name)
+   cv2.setMouseCallback(window_name, function, image)
+   cont = True
+   image_c = image.copy()
+   while cont:
+      cv2.imshow(window_name, image_c)
+      cv2.waitKey(1)
+############################  END OF SUBSECTION  ##############################
+
+#                               End of Section                                #
+###############################################################################
+def noise_reduction(image_gray, break_point):
+   """This function interacts with the user to help them perform mathematical 
+   morphology operations on the grayscale image, attempting to reduce the noise
+   of the original image.
+   Parameters
+   ----------
+   image_gray : numpy matrix of integers
+      The grayscale version of the original image.
+   break_point : int
+      A value indicating the threshold between the background and the content.
+   Returns
+   -------
+   result : numpy matrix of integers
+      The result image.
+   """
+   image_bin_inv = get_binary_image_inv(image_gray, break_point)
+   show_binary_image(image_bin_inv, "Noise Reduction")
+   image_stack = []
+   message_stack = []
+   image_stack.append(image_bin_inv)
+   message_stack.append('')
+   kernel_shape_str = KERNEL_SHAPE
+   kernel_shape = get_kernel_shape(kernel_shape_str)
+   kernel_size = KERNEL_SIZE
+   kernel = cv2.getStructuringElement(kernel_shape, kernel_size)
+   response = ''
+   last_step = ''
+   result = image_bin_inv
+   print("Current kernel shape and size is: " + kernel_shape_str +
+         str(kernel_size))
+   print("Pelease indicate which operation to perform:")
+   print("(a)djust kernel(this cannot be undone)")
+   print("(d)ilation")
+   print("(e)rosion")
+   print("(p)roceed")
+   print("(u)ndo" + message_stack[-1])
+   while len(response) == 0:
+      response = input("Your choice is: ")
+      if len(response) > 0:
+         if response[0] == 'a':
+            new_shape_str = ''
+            while new_shape_str == '':
+               print("Please provide the desired shape of the kernel:")
+               print("(C)ross")
+               print("(E)llipse")
+               print("(R)ectangle")
+               new_shape_str = input("Your choice is: ")
+               if len(new_shape_str) > 0:
+                  if new_shape_str[0] in ['r', 'R', 'e', 'E', 'c', 'C']:
+                     kernel_shape = get_kernel_shape(new_shape_str)
+                     kernel_shape_str = KERNEL_STR_MAP[new_shape_str[0]]
+                  else:
+                     print("Please provide a valid string!")
+                     new_shape_str = ''
+            new_size = ''
+            while new_size == '':
+               new_size = input("Enter the new kernel size as a single integer: ")
+               if is_valid_type(new_size, int):
+                  new_size = int(new_size)
+                  if new_size > min(image_gray.shape[0], image_gray.shape[1])\
+                     or new_size <= 0:
+                     print("Please provide a valid integer!")
+                     new_size = ''
+                  else:
+                     kernel_size = (new_size, new_size)
+                     print("Kernel size is now " + str(kernel_size))
+               else:
+                  print("Please provide a valid integer!")
+                  new_size = ''
+            response = ''
+            kernel = cv2.getStructuringElement(kernel_shape, kernel_size)
+            print("Updated kernel:")
+            print(kernel)
+         elif response[0] in ['d', 'e']:
+            image_temp = image_stack[-1].copy()
+            if response[0] == 'd':
+               print("Performing dilation....")
+               image_temp = denoise(image_temp, cv2.dilate, kernel, 1)
+               last_step = " (last step was (d)ilation)"
+            elif response[0] == 'e':
+               print("Performing erosion....")
+               image_temp = denoise(image_temp, cv2.erode, kernel, 1)
+               last_step = " (last step was (e)rosion)"
+            image_stack.append(image_temp)
+            message_stack.append(last_step)
+            show_binary_image(image_temp, "Noise Reduction")
+            print("Operation complete.")
+            response = ''
+         elif response[0] == 'u':
+            if len(image_stack) > 1:
+               image_stack.pop()
+               message_stack.pop()
+               image_temp = image_stack[-1]
+               show_binary_image(image_temp, "Noise Reduction")
+            else:
+               print("There is no last step.")
+            response = ''
+         elif response[0] == 'p':
+            result = image_stack[-1]
+            break
+         else:
+            print("Invalid input, please try again!")
+            response = ''
+         print("Current kernel shape and size is: " + kernel_shape_str +
+               str(kernel_size))
+         print("Pelease indicate which operation to perform:")
+         print("(a)djust kernel(this cannot be undone)")
+         print("(d)ilation")
+         print("(e)rosion")
+         print("(p)roceed")
+         print("(u)ndo" + message_stack[-1])
+   return result
+
 
 def find_vertices(image_display, image_work, template, tW, tH):
-   """Repeated asks the user for the amount of undetected vertices in the
-   graph until all are marked. The false ones can be removed at the end.
+   """Repeatedly asks the user for the amount of undetected vertices in the
+   graph until all are marked. Then the false ones can be removed by user. If
+   there are some vertices cannot be detected automatically, the user is
+   allowed to mark them manually.
    Parameters
    ----------
    image_display : numpy matrix of integers
@@ -298,6 +448,7 @@ def find_vertices(image_display, image_work, template, tW, tH):
    font_thickness : int
       Stores the font thickness value.
    """
+   global nodes
    image_display2 = image_display.copy()
    nodes = [] # stores the upper-left coordinates of the vertices
    nodes_center = [] # stores the center coordinates of the vertices
@@ -316,8 +467,8 @@ def find_vertices(image_display, image_work, template, tW, tH):
                image_display3 = image_display2.copy()
                label_vertices(image_display3, nodes, rel_pos)
                cv2.startWindowThread()
-               cv2.namedWindow("Vertices")
-               cv2.imshow("Vertices", image_display3)
+               cv2.namedWindow(VERTICES)
+               cv2.imshow(VERTICES, image_display3)
                cv2.waitKey(1)
                print("Current vertices:")
                print_list(nodes)
@@ -328,15 +479,15 @@ def find_vertices(image_display, image_work, template, tW, tH):
          user_input = 1
       
    cv2.destroyWindow(GRAPH)
-   cv2.destroyWindow("Vertices")
+   cv2.destroyWindow(VERTICES)
    
 
    cv2.startWindowThread()
-   cv2.namedWindow("Vertices with Labels")
-   cv2.imshow("Vertices with Labels", image_display3)
+   cv2.namedWindow(VERTICES_W_LBL)
+   cv2.imshow(VERTICES_W_LBL, image_display3)
    cv2.waitKey(1)
    rel_pos, font_size, font_thickness = adjust_labels(image_display2.copy(),
-      "Vertices with Labels", nodes, rel_pos)
+      VERTICES_W_LBL, nodes, rel_pos)
    
    # attempts to remove all the false vertices
    user_input = ''
@@ -345,8 +496,8 @@ def find_vertices(image_display, image_work, template, tW, tH):
       highlight_vertices(image_display4, nodes, tW, tH)
       label_vertices(image_display4, nodes, rel_pos, font_size, font_thickness)
       cv2.startWindowThread()
-      cv2.namedWindow("Vertices with Labels")
-      cv2.imshow("Vertices with Labels", image_display4)
+      cv2.namedWindow(VERTICES_W_LBL)
+      cv2.imshow(VERTICES_W_LBL, image_display4)
       cv2.waitKey(1)
       user_input = ''
       user_input = get_valid_list(user_input, "Indicate non-vertex elements " +
@@ -358,9 +509,26 @@ def find_vertices(image_display, image_work, template, tW, tH):
          print("Current vertices:")
          print_list(nodes)
          user_input = ''
-   
    print("Current vertices:")
    print_list(nodes)
+   user_input = ''
+   while user_input == '':
+      while user_input == '':
+         user_input = input("Do you want to locate the remaining vertices manually?")
+      if user_input[0] == 'n' or user_input[0] == 'N':
+         break
+      elif user_input[0] == 'y' or user_input[0] == 'Y':
+         cont = True
+         initiate_UI(image_display4, VERTICES_W_LBL, select)
+      else:
+         user_input = ''
+   print("Current vertices:")
+   print_list(nodes)
+   label_vertices(image_display4, nodes, rel_pos, font_size, font_thickness)
+   cv2.startWindowThread()
+   cv2.namedWindow(VERTICES_W_LBL)
+   cv2.imshow(VERTICES_W_LBL, image_display4)
+   cv2.waitKey(1)
    return nodes, rel_pos, font_size, font_thickness
 
 
@@ -477,133 +645,6 @@ def sort_vertices(nodes, image_display, window_name, rel_pos, font_size, font_th
          print("Please answer with y/n.")
    return nodes
 
-
-def noise_reduction(image_gray, break_point, nodes_center, radius):
-   """This function interacts with the user to help them perform mathematical 
-   morphology operations on the grayscale image, attempting to reduce the noise
-   of the original image.
-   Parameters
-   ----------
-   image_gray : numpy matrix of integers
-      The grayscale version of the original image.
-   break_point : int
-      A value indicating the threshold between the background and the content.
-   nodes_center : List[[int, int]]
-      Stores the estimated center coordinates of the vertices.
-   radius : float
-      A value indicating the size of the block that is used to hide the
-      vertices.
-   """
-   image_bin_inv = get_binary_image_inv(image_gray, break_point)
-   show_binary_image(image_bin_inv, "Noise Reduction")
-   image_stack = []
-   message_stack = []
-   image_stack.append(image_bin_inv)
-   message_stack.append('')
-   kernel_shape_str = KERNEL_SHAPE
-   kernel_shape = get_kernel_shape(kernel_shape_str)
-   kernel_size = KERNEL_SIZE
-   kernel = cv2.getStructuringElement(kernel_shape, kernel_size)
-   response = ''
-   last_step = ''
-   result = image_bin_inv
-   print("Current kernel shape and size is: " + kernel_shape_str +
-         str(kernel_size))
-   print("Pelease indicate which operation to perform:")
-   print("(a)djust kernel(this cannot be undone)")
-   print("(c)over vertices")
-   print("(d)ilation")
-   print("(e)rosion")
-   print("(p)roceed")
-   print("(t)hin")
-   print("(u)ndo" + message_stack[-1])
-   while len(response) == 0:
-      response = input("Your choice is: ")
-      if len(response) > 0:
-         if response[0] == 'a':
-            new_shape_str = ''
-            while new_shape_str == '':
-               print("Please provide the desired shape of the kernel:")
-               print("(C)ross")
-               print("(E)llipse")
-               print("(R)ectangle")
-               new_shape_str = input("Your choice is: ")
-               if len(new_shape_str) > 0:
-                  if new_shape_str[0] in ['r', 'R', 'e', 'E', 'c', 'C']:
-                     kernel_shape = get_kernel_shape(new_shape_str)
-                     kernel_shape_str = KERNEL_STR_MAP[new_shape_str[0]]
-                  else:
-                     print("Please provide a valid string!")
-                     new_shape_str = ''
-            new_size = ''
-            while new_size == '':
-               new_size = input("Enter the new kernel size as a single integer: ")
-               if is_valid_type(new_size, int):
-                  new_size = int(new_size)
-                  if new_size > min(image_gray.shape[0], image_gray.shape[1])\
-                     or new_size <= 0:
-                     print("Please provide a valid integer!")
-                     new_size = ''
-                  else:
-                     kernel_size = (new_size, new_size)
-                     print("Kernel size is now " + str(kernel_size))
-               else:
-                  print("Please provide a valid integer!")
-                  new_size = ''
-            response = ''
-            kernel = cv2.getStructuringElement(kernel_shape, kernel_size)
-            print("Updated kernel:")
-            print(kernel)
-         elif response[0] in ['c', 'd', 'e', 't']:
-            image_temp = image_stack[-1].copy()
-            if response[0] == 'c':
-               print("Covering vertices....")
-               hide_vertices(image_temp, nodes_center, radius)
-               last_step = " (last step was (c)over vertices)"
-            elif response[0] == 'd':
-               print("Performing dilation....")
-               image_temp = denoise(image_temp, cv2.dilate, kernel, 1)
-               last_step = " (last step was (d)ilation)"
-            elif response[0] == 'e':
-               print("Performing erosion....")
-               image_temp = denoise(image_temp, cv2.erode, kernel, 1)
-               last_step = " (last step was (e)rosion)"
-            elif response[0] == 't':
-               print("Performing image thinning....")
-               image_temp = thin(image_temp)
-               last_step = " (last step was (t)hin)"
-            image_stack.append(image_temp)
-            message_stack.append(last_step)
-            show_binary_image(image_temp, "Noise Reduction")
-            print("Operation complete.")
-            response = ''
-         elif response[0] == 'u':
-            if len(image_stack) > 1:
-               image_stack.pop()
-               message_stack.pop()
-               image_temp = image_stack[-1]
-               show_binary_image(image_temp, "Noise Reduction")
-            else:
-               print("There is no last step.")
-            response = ''
-         elif response[0] == 'p':
-            result = image_stack[-1]
-         else:
-            print("Invalid input, please try again!")
-            response = ''
-         print("Current kernel shape and size is: " + kernel_shape_str +
-               str(kernel_size))
-         print("Pelease indicate which operation to perform:")
-         print("(a)djust kernel(this cannot be undone)")
-         print("(c)over vertices")
-         print("(d)ilation")
-         print("(e)rosion")
-         print("(p)roceed")
-         print("(t)hin")
-         print("(u)ndo" + message_stack[-1])
-   return result
-            
-
 def extract_edges(image_work, nodes_center, radius):
    """This function attempts to extract all the edges from the image with
    vertices being hidden.
@@ -666,23 +707,39 @@ def display_edges(E):
    """
    print("Displaying edges....")
    print_list(E)
+   
+#=============================================================================#
+#                             Under Development                               
+
+
+
+
 
 #                               End of Section                                #
 ###############################################################################
 ###############################################################################
 #                              Executing Codes                                #
-
-if __name__ == "__main__":   
-   # Obtain the files.
-   graph, graph_gray, template, break_point = get_images(True)
+if __name__ == "__main__":
+   # Set up the graph image.
+   graph, graph_gray, break_point = get_image(True)
+   graph_work = noise_reduction(graph_gray, break_point)
+   graph_work_BW = get_binary_image(graph_work, 0, 255)
    
+   # some global variables
+   ix, iy = -1, -1
+   drawing = False
+   template = None
+   
+   initiate_UI(graph_work_BW, BLACK_AND_WHITE, crop)
+   
+
    # Process the template.
    template, (tH, tW), radius = process_template(template)
    
    # Find all the vertices. In particular variable nodes stores a list of
    # nodes' upper-right corner.
    nodes, rel_pos, font_size, font_thickness =\
-      find_vertices(graph.copy(), graph_gray.copy(), template, tW, tH)
+      find_vertices(graph.copy(), graph_work_BW.copy(), template, tW, tH)
    
    # If neccesary, sort the vertices such that the order matches the given one.
    nodes = sort_vertices(nodes, graph.copy(), "Vertices with Labels", rel_pos,
@@ -690,19 +747,10 @@ if __name__ == "__main__":
    
    nodes_center = get_center_pos(nodes, tW, tH)
    
-   complete = False
-   while not complete:
-      graph_work = noise_reduction(graph_gray, break_point, nodes_center,\
-                                    radius)
-      E, deg_seq = extract_edges(graph_work, nodes_center, radius)
-      display_edges(E)
-      user_input = ''
-      while len(user_input) == 0:
-         user_input = input("Attempt again?(y/n)")
-         if len(user_input) > 0:
-            if user_input[0] == 'n' or user_input[0] == 'N':
-               complete = True
-            elif user_input[0] != 'y' and user_input[0] != 'Y':
-               print("Invalud input, please try again!")
-               user_input = ''
+   # Thin the image, and then extract all the edges.
+   print("Thinning the image, this may take some time....")
+   graph_thinned = thin(graph_work)
+   print("Thinning complete, extracting edges.")
+   E, deg_seq = extract_edges(graph_thinned, nodes_center, radius)
+   display_edges(E)
    halt = input("HALT (press enter to end)")
