@@ -10,9 +10,8 @@ TEMPLATE_PATH = 'vertex_example' + str(sep)
 
 
 # Some default window names.
-GRAPH = "graph"
-TEMPLATE = "template"
-BLACK_AND_WHITE = "Balck and White"
+GRAPH = "Graph"
+TEMPLATE = "Template"
 VERTICES = "Vertices"
 VERTICES_W_LBL = "Vertices with Labels"
 
