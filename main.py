@@ -682,8 +682,8 @@ def extract_edges(image_work, nodes_center, radius):
       for j in range(len(endpoints[i])):
          edge, trail = get_edge(image_work, endpoints[i][j], [], [],\
                                  nodes_center, i, radius)
-         if edge != PLACE_HOLDER_COOR and not edge in E and\
-            not (edge[1], edge[0]) in E:
+         if edge != PLACE_HOLDER_EDGE and not edge in E and\
+            not [edge[1], edge[0]] in E:
             E.append(edge)
             trails.append(trail)
    image_temp = np.zeros(image_work.shape, np.uint8)
@@ -702,9 +702,9 @@ def extract_edges(image_work, nodes_center, radius):
    show_binary_image(image_temp, "trails", True)
    '''
    
-   return E, deg_seq
+   return E, endpoints, deg_seq
 
-def display_edges(E):
+def output(E, end_points, deg_seq):
    """Shows all the edges.
    Parameters
    ----------
@@ -714,6 +714,10 @@ def display_edges(E):
    -------
    None
    """
+   print("Printing outputs....")
+   print("\"vertices\": " + str([i for i in range(BASE, len(deg_seq) + BASE)]) + ",")
+   print("\"edges\": " + str(E) + ",")
+   print("\"degrees\": " + str(deg_seq) + ",")
    print("Displaying edges....")
    print_list(E)
    
@@ -758,6 +762,11 @@ if __name__ == "__main__":
    # Process the image, then extract all the edges.
    graph_work = noise_reduction(graph_gray, break_point)
    hide_vertices(graph_work, nodes_center, radius)
-   E, deg_seq = extract_edges(graph_work, nodes_center, radius)
-   display_edges(E)
+   '''
+   graph_display = get_binary_image(graph_work.copy(), 0, 255)
+   cv2.imshow("graph_display", graph_display)
+   cv2.waitKey()
+   '''
+   E, end_points, deg_seq = extract_edges(graph_work, nodes_center, radius)
+   output(E, end_points, deg_seq)
    halt = input("HALT (press enter to end)")
