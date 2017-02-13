@@ -268,9 +268,34 @@ def get_image(show_graph = False):
       cv2.waitKey(1)
 
    break_point = get_threshold(graph_gray)
-   return graph, graph_gray, break_point
+   return graph, graph_gray, break_point, input_dir[index - BASE]
    
-   
+def load(filename):
+   """Loads a graph data from a previous work.
+   Parameters
+   ----------
+   filename : String
+      The file name withough suffix, used in saving.
+   Returns
+   -------
+   image : numpy matrix of integers
+      Image data.
+   nodes_center : List[[int, int]]
+      Stores the estimated center coordinates of the vertices.
+   radius : float
+      Half of the length of the diagonal of the template.
+   """
+   image = np.load(DATA_PATH + filename + '.npy')
+   file = open(DATA_PATH + filename + '.dat')
+   lines = []
+   for line in file:
+      if len(line) > 0 and line[0] != '#':
+         lines.append(str(line))
+   file.close()
+   nodes_center = eval(lines[0])
+   radius = eval(lines[1])
+   return image, nodes_center, radius
+
 def initiate_UI(image, window_name, function, message):
    """Makes a certain window interactable for user to perform some task.
    Parameters
@@ -296,7 +321,7 @@ def initiate_UI(image, window_name, function, message):
       cv2.waitKey(1)
 
 
-def find_vertices(image_display, image_work, template, tW, tH):
+def extract_vertices(image_display, image_work, template, tW, tH):
    """Repeatedly asks the user for the amount of undetected vertices in the
    graph until all are marked. Then the false ones can be removed by user. If
    there are some vertices cannot be detected automatically, the user is
@@ -389,7 +414,7 @@ def find_vertices(image_display, image_work, template, tW, tH):
    user_input = ''
    while user_input == '':
       while user_input == '':
-         user_input = input("Do you want to locate the remaining vertices manually?")
+         user_input = input("Do you want to locate the remaining vertices manually? ")
       if user_input[0] == 'n' or user_input[0] == 'N':
          break
       elif user_input[0] == 'y' or user_input[0] == 'Y':
@@ -522,7 +547,7 @@ def sort_vertices(nodes, image_display, window_name, rel_pos, font_size, font_th
    return nodes
 
 
-def noise_reduction(image_gray, break_point):
+def noise_reduction(image_gray, break_point, filename, nodes_center, radius):
    """This function interacts with the user to help them perform mathematical 
    morphology operations on the grayscale image, attempting to reduce the noise
    of the original image.
@@ -532,6 +557,12 @@ def noise_reduction(image_gray, break_point):
       The grayscale version of the original image.
    break_point : int
       A value indicating the threshold between the background and the content.
+   filename : String
+      The file name withough suffix, used in saving.
+   nodes_center : List[[int, int]]
+      Stores the estimated center coordinates of the vertices.
+   radius : float
+      Half of the length of the diagonal of the template.
    Returns
    -------
    result : numpy matrix of integers
@@ -557,6 +588,8 @@ def noise_reduction(image_gray, break_point):
    print("(d)ilation")
    print("(e)rosion")
    print("(p)roceed")
+   print("(s)ave(this cannot be undone)")
+   print("(t)hin")
    print("(u)ndo" + message_stack[-1])
    while len(response) == 0:
       response = input("Your choice is: ")
@@ -620,10 +653,24 @@ def noise_reduction(image_gray, break_point):
                print("There is no last step.")
             response = ''
          elif response[0] == 'p':
-            print("Performing image thinning, this may take some time....")
-            result = thin(image_stack[-1])
-            print("Image thinning complete.")
             break
+         elif response[0] == 's':
+            print("Saving image data....")
+            np.save(DATA_PATH + filename + '.npy', image_stack[-1])
+            f = open(DATA_PATH + filename + '.dat', 'w')
+            f.write(str(nodes_center) + "\n")
+            f.write(str(radius))
+            f.close()
+            print("Saving complete.")
+            response = ''
+         elif response[0] == 't':
+            print("Performing image thinning, this may take some time....")
+            image_temp = thin(image_stack[-1].copy())
+            print("Image thinning complete.")
+            image_stack.append(image_temp)
+            message_stack.append(" (last step was (t)hin")
+            show_binary_image(image_temp, "Noise Reduction")
+            response = ''
          else:
             print("Invalid input, please try again!")
             response = ''
@@ -634,6 +681,8 @@ def noise_reduction(image_gray, break_point):
          print("(d)ilation")
          print("(e)rosion")
          print("(p)roceed")
+         print("(s)ave(this cannot be undone)")
+         print("(t)hin")
          print("(u)ndo" + message_stack[-1])
    cv2.destroyWindow("Noise Reduction")
    return result
@@ -702,7 +751,74 @@ def extract_edges(image_work, nodes_center, radius):
    show_binary_image(image_temp, "trails", True)
    '''
    
-   return E, endpoints, deg_seq
+   return E, deg_seq
+
+def extract_edges2(image_work, nodes_center, radius):
+   """An alternative way to obtain the edges of a graph.
+   Parameters
+   ----------
+   image_work : numpy matrix of integers
+      The image that is intended to be hidden for intermediate process.
+   endpoints : List[[int, int]]
+      The ith list in endpoints contains all the pixel coordinates that are the
+      starting points of the edges from the ith vertex.
+   nodes_center : List[[int, int]]
+      Stores the estimated center coordinates of the vertices.
+   radius : float
+      Half of the length of the diagonal of the template.
+   Returns
+   -------
+   E : List[(int, int)]
+      Each tuple (a, b) represents an edge connecting vertex a and b.
+   deg_seq : List[List[int]]
+      The nonstandard degree sequence of the graph.
+   """
+   E = []
+   endpoints = get_endpoints(image_work, nodes_center, radius)
+   deg_seq = []
+   intersections, intersections_skirt = \
+      find_intersections(image_work, endpoints[0][0])
+   linked_to, outgoing, v2i = \
+      construct_network(image_work, endpoints, intersections,\
+                        intersections_skirt, nodes_center)
+   merged, bridges = merge_intersections(image_work, intersections, linked_to,\
+                                          outgoing)
+   bridges_array = [-1] * len(intersections)
+   '''
+   image_copy = image_work.copy()
+   for i in intersections:
+      cv2.putText(image_copy, str(intersections.index(i)), (i[0], i[1]), cv2.FONT_HERSHEY_SIMPLEX,\
+            FONT_SIZE, 255, FONT_THICKNESS, cv2.LINE_AA, False)
+   cv2.imshow("image_copy", image_copy)
+   cv2.waitKey()
+   '''
+   for pair in bridges:
+      bridges_array[pair[0]] = pair[1]
+      bridges_array[pair[1]] = pair[0]
+   viv = restore_graph(v2i, linked_to, outgoing, bridges_array)
+   intersections_skirt_all = []
+   for iskirt in intersections_skirt:
+      intersections_skirt_all += iskirt
+   endpoints_all = []
+   v2v = []
+   for i in range(len(viv)):
+      v2v.append([])
+   for i in range(len(endpoints)):
+      for ep in endpoints[i]:
+         find_vertices(image_work, endpoints, intersections_skirt_all, v2v, [], ep, i)
+   result = []
+   for i in range(len(endpoints)):
+      result.append(viv[i] + v2v[i])
+   for i in range(len(result)):
+      for j in range(len(result[i])):
+         result[i][j] += BASE
+   for v1 in range(len(result)):
+      for v2 in result[v1]:
+         if not [v1 + BASE, v2] in E and not [v2, v1 + BASE] in E:
+            E.append([v1 + BASE, v2])
+   for v in result:
+      deg_seq.append(len(v))
+   return E, deg_seq
 
 def output(E, end_points, deg_seq):
    """Shows all the edges.
@@ -715,16 +831,16 @@ def output(E, end_points, deg_seq):
    None
    """
    print("Printing outputs....")
-   print("\"vertices\": " + str([i for i in range(BASE, len(deg_seq) + BASE)]) + ",")
-   print("\"edges\": " + str(E) + ",")
-   print("\"degrees\": " + str(deg_seq) + ",")
+   print("\"vertices\": " + str([i for i in range(BASE, len(deg_seq) + BASE)]))
+   print("\"edges\": " + str(E))
+   print("\"degrees\": " + str(deg_seq))
    print("Displaying edges....")
    print_list(E)
    
 #=============================================================================#
 #                             Under Development                               
 
-
+    
 
 
 
@@ -733,8 +849,11 @@ def output(E, end_points, deg_seq):
 ###############################################################################
 #                              Executing Codes                                #
 if __name__ == "__main__":
+   '''
    # Set up the graph image.
-   graph, graph_gray, break_point = get_image(True)
+   graph, graph_gray, break_point, filename = get_image(True)
+   filename_array = filename.split('.')
+   filename = filename_array[0]
    
    # Some global variables.
    ix, iy = -1, -1
@@ -751,7 +870,7 @@ if __name__ == "__main__":
    # Find all the vertices. In particular variable nodes stores a list of
    # nodes' upper-right corner.
    nodes, rel_pos, font_size, font_thickness =\
-      find_vertices(graph.copy(), graph_gray.copy(), template, tW, tH)
+      extract_vertices(graph.copy(), graph_gray.copy(), template, tW, tH)
    
    # If neccesary, sort the vertices such that the order matches the given one.
    nodes = sort_vertices(nodes, graph.copy(), "Vertices with Labels", rel_pos,
@@ -760,13 +879,45 @@ if __name__ == "__main__":
    nodes_center = get_center_pos(nodes, tW, tH)
 
    # Process the image, then extract all the edges.
-   graph_work = noise_reduction(graph_gray, break_point)
+   graph_work = noise_reduction(graph_gray, break_point, filename, nodes_center, radius)
    hide_vertices(graph_work, nodes_center, radius)
+   '''
    '''
    graph_display = get_binary_image(graph_work.copy(), 0, 255)
    cv2.imshow("graph_display", graph_display)
    cv2.waitKey()
    '''
-   E, end_points, deg_seq = extract_edges(graph_work, nodes_center, radius)
-   output(E, end_points, deg_seq)
+   # E, end_points, deg_seq = extract_edges(graph_work, nodes_center, radius)
+   # end_points = [] + end_points
+   # output(E, end_points, deg_seq)
+   # get_invariants(E, len(deg_seq))
+   
+   #############################################################
+   # work in progress:
+   #
+   
+   
+   graph_work, nodes_center, radius = load("P72A")
+   hide_vertices(graph_work, nodes_center, radius)
+   E, deg_seq = extract_edges(graph_work, nodes_center, radius)
+   print(E)
+   print(deg_seq)
+   
+   '''
+   f = open('temp.txt', 'w')
+   for y in range(220, 241):
+      line = ''
+      for x in range(360, 381):
+         line += str(graph_work[y, x]) + ' '
+      line += '\n'
+      f.write(line)
+   f.close()
+   '''
+   
+   #############################################################
+   
    halt = input("HALT (press enter to end)")
+   
+   
+   
+   # 1130 Th ART338
