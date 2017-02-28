@@ -656,6 +656,24 @@ def is_intersection(current_pos, next):
          if cos_theta <= 0:
             return True
    return False
+   
+def get_score(vec1, vec2, target = -1):
+   """Computes the score of the two given vectors. Here the score is defined to
+   be the square difference between their cosine value and the target value.
+   Parameters
+   ----------
+   vec1, vec2 : List[List[int]]
+      The given vectors.
+   target : int
+      The target value used to compare. The default is -1.
+   Returns
+   -------
+   The square difference between their cosine value and the target value.
+   """
+   cos = np.inner(vec1, vec2) / (np.linalg.norm(vec1, 2) * np.linalg.norm(vec2, 2))
+   print("vec1 = " + str(vec1))
+   print("vec2 = " + str(vec2))
+   return pow(cos - target, 2)
 #                               End of Section                                #
 ###############################################################################
 ###############################################################################
@@ -1038,10 +1056,10 @@ def find_intersections(image_bin, end_point):
             print('')
             '''
             intersections.append(pos)
-            cv2.circle(image_debug, (pos[0], pos[1]), 4, 1, 1)
-            image_show = get_binary_image(image_debug, 0, 255)
-            cv2.imshow("image_debug", image_show)
-            cv2.waitKey(1)
+            # cv2.circle(image_debug, (pos[0], pos[1]), 4, 1, 1)
+            # image_show = get_binary_image(image_debug, 0, 255)
+            # cv2.imshow("image_debug", image_show)
+            # cv2.waitKey(1)
       next2prev = next2prev_temp
       prev = next_level
       next_level = next_temp
@@ -1115,9 +1133,32 @@ def construct_network(image_bin, endpoints, intersections,\
       print(outgoing)
       print('')
    print("v2i = " + str(v2i))
+   draw_vectors(image_bin, intersections, outgoing);
    return linked_to, outgoing, v2i
       
-      
+def draw_vectors(image_bin, starting_points, vectors):
+   """Draws vectors on a given binary image.
+   Parameters
+   ----------
+   image_bin : numpy matrix of integers
+      Stores the binary image that are being studied, with contents marked by
+      1s and background marked by 0s.
+   starting_points : List[(int, int)]
+      Stores the starting point of each vector.
+   vectors : List[List[(int, int)]]
+      Stores the vectors at each starting point.
+   Returns
+   -------
+   None
+   """
+   image_temp = image_bin.copy();
+   for i in range(len(starting_points)):
+      for j in range(len(vectors[i])):
+         cv2.arrowedLine(image_temp, (starting_points[i][0], starting_points[i][1]),\
+                           (int(np.ceil(starting_points[i][0] + 10 * vectors[i][j][0])), int(np.ceil(starting_points[i][1] + 10 * vectors[i][j][1]))), 255)
+   cv2.imshow("vectors", image_temp)
+   cv2.waitKey(1)
+
 def find_path(image_bin, current_pos, trail, known, endpoints, intersections,\
                intersections_skirt, linked_to, outgoing, starting_intersection,\
                v2i, nodes_center):
@@ -1172,8 +1213,12 @@ def find_path(image_bin, current_pos, trail, known, endpoints, intersections,\
          image_temp = get_binary_image(image_temp, 0, 255)
          cv2.circle(image_temp, (intersections[starting_intersection][0],\
                      intersections[starting_intersection][1]), 5, 255, 1)
-         cv2.putText(image_temp, str(node_index), nodes_center[node_index], cv2.FONT_HERSHEY_SIMPLEX,\
-            FONT_SIZE, 255, FONT_THICKNESS, cv2.LINE_AA, False)
+         #cv2.putText(image_temp, str(node_index), nodes_center[node_index], cv2.FONT_HERSHEY_SIMPLEX,\
+         #   FONT_SIZE, 255, FONT_THICKNESS, cv2.LINE_AA, False)
+         for c in nodes_center:
+            cv2.circle(image_temp, (c[0], c[1]), 5, 255, 1)
+            cv2.putText(image_temp, str(node_index), nodes_center[node_index], cv2.FONT_HERSHEY_SIMPLEX,\
+               FONT_SIZE, 255, FONT_THICKNESS, cv2.LINE_AA, False)
          cv2.imshow("image_temp", image_temp)
          cv2.waitKey()
          '''
@@ -1195,6 +1240,10 @@ def find_path(image_bin, current_pos, trail, known, endpoints, intersections,\
                      (intersections[intersection_index][0],\
                      intersections[intersection_index][1]), cv2.FONT_HERSHEY_SIMPLEX,\
             FONT_SIZE, 255, FONT_THICKNESS, cv2.LINE_AA, False)
+         for c in nodes_center:
+            cv2.circle(image_temp, (c[0], c[1]), 5, 255, 1)
+            cv2.putText(image_temp, str(node_index), nodes_center[node_index], cv2.FONT_HERSHEY_SIMPLEX,\
+               FONT_SIZE, 255, FONT_THICKNESS, cv2.LINE_AA, False)
          cv2.imshow("image_temp", image_temp)
          cv2.waitKey()
          '''
@@ -1301,11 +1350,12 @@ def get_merging_options(unmerged, current_list, result, linked_to):
             temp.remove(i)
             get_merging_options(temp, current_list, result, linked_to)
             current_list.pop()
-   
+
 def merge_2_intersections(linked_to_copy, outgoing_copy, indices):
    """Merges two intersections A and B by removing index(B) in
    linked_to_copy[A] and index(A) in linked_to_copy[B] and do the similar work
-   on outgoing_copy.
+   on outgoing_copy. This method assumes that the two intersections have the
+   same amount of outgoing vectors.
    Parameters
    ----------
    linked_to_copy : List[List[int, int]]
@@ -1325,6 +1375,7 @@ def merge_2_intersections(linked_to_copy, outgoing_copy, indices):
    linked_to_copy[indices[1]].remove(indices[0])
    smallest = sys.maxsize
    n = len(outgoing_copy[indices[0]])
+   '''
    for i in range(n):
       sum = 0
       for j in range(n):
@@ -1333,8 +1384,40 @@ def merge_2_intersections(linked_to_copy, outgoing_copy, indices):
              (np.linalg.norm(outgoing_copy[indices[0]][j], 2) *\
              np.linalg.norm(outgoing_copy[indices[1]][(i + j) % n], 2))
       smallest = min(smallest, sum)
-   return smallest
-   
+   '''
+   minimum = get_min_score(outgoing_copy[indices[0]], outgoing_copy[indices[1]], [])
+   return minimum
+
+def get_min_score(vec_list_static, vec_list_dynamic, current):
+   """Computes the minimum score out of all the possible pairing options
+   between the two given vector lists. Note that only one vector list needs to
+   be permuted in order to obtain all the possible bijections.
+   Parameters
+   ----------
+   vec_list_static : List[List[int]]
+      This vector list does not change at each iteration,
+   vec_list_dynamic : List[List[int]]
+      This vector list changed at each iteration.
+   current : List[List[int]]
+      This list stores the current permutation of a vector list.
+   Returns
+   -------
+   result : double
+      The minium score (related to the best bijection) of the current match.
+   """
+   if len(vec_list_dynamic) == 0:
+      temp = 0
+      for i in range(len(current)):
+         temp += get_score(vec_list_static[i], current[i], -1)
+      return temp
+   else:
+      result = sys.maxsize;
+      for i in range(len(vec_list_dynamic)):
+         current.append(vec_list_dynamic[i])
+         result = min(result, get_min_score(vec_list_static, vec_list_dynamic[0 : i] + vec_list_dynamic[i + 1 :], current))
+         current.pop()
+      return result
+
 def restore_graph(v2i, linked_to, outgoing, bridges_array):
    """Retrieves the graph data.
    Parameters

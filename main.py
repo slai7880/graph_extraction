@@ -775,6 +775,12 @@ def extract_edges2(image_work, nodes_center, radius):
    """
    E = []
    endpoints = get_endpoints(image_work, nodes_center, radius)
+   image_work2 = get_binary_image(image_work.copy(), 0, 255)
+   for i in range(len(nodes_center)):
+      cv2.putText(image_work2, str(i + BASE), nodes_center[i], cv2.FONT_HERSHEY_SIMPLEX,\
+            FONT_SIZE, 255, FONT_THICKNESS, cv2.LINE_AA, False)
+   cv2.imshow("image_work2", image_work2)
+   cv2.waitKey(1)
    deg_seq = []
    intersections, intersections_skirt = \
       find_intersections(image_work, endpoints[0][0])
@@ -836,20 +842,11 @@ def output(E, end_points, deg_seq):
    print("\"degrees\": " + str(deg_seq))
    print("Displaying edges....")
    print_list(E)
-   
-#=============================================================================#
-#                             Under Development                               
 
-    
-
-
-
-#                               End of Section                                #
-###############################################################################
-###############################################################################
-#                              Executing Codes                                #
-if __name__ == "__main__":
-   '''
+def start_regular_mode():
+   """Starts the program with regular mode.
+   """
+   global ix, iy, drawing, template, tH, tW
    # Set up the graph image.
    graph, graph_gray, break_point, filename = get_image(True)
    filename_array = filename.split('.')
@@ -881,7 +878,7 @@ if __name__ == "__main__":
    # Process the image, then extract all the edges.
    graph_work = noise_reduction(graph_gray, break_point, filename, nodes_center, radius)
    hide_vertices(graph_work, nodes_center, radius)
-   '''
+   
    '''
    graph_display = get_binary_image(graph_work.copy(), 0, 255)
    cv2.imshow("graph_display", graph_display)
@@ -892,31 +889,61 @@ if __name__ == "__main__":
    # output(E, end_points, deg_seq)
    # get_invariants(E, len(deg_seq))
    
-   #############################################################
-   # work in progress:
-   #
-   
-   
+def start_analysis_mode():
+   """In this mode, the input will be taken from a previous data source.
+   """
+   '''
+   [229, 276]
+[224, 278]
+[223, 277]
+[225, 282]
+   '''
    graph_work, nodes_center, radius = load("P72A")
+   
+   
    hide_vertices(graph_work, nodes_center, radius)
-   E, deg_seq = extract_edges(graph_work, nodes_center, radius)
+   E, deg_seq = extract_edges2(graph_work, nodes_center, radius)
    print(E)
    print(deg_seq)
    
-   '''
+   
    f = open('temp.txt', 'w')
-   for y in range(220, 241):
-      line = ''
-      for x in range(360, 381):
+   for y in range(270, 290):
+      line = str(y % 10) + ' '
+      for x in range(218, 235):
          line += str(graph_work[y, x]) + ' '
       line += '\n'
       f.write(line)
    f.close()
-   '''
    
-   #############################################################
+#=============================================================================#
+#                             Under Development                               
+
+    
+
+
+
+#                               End of Section                                #
+###############################################################################
+###############################################################################
+#                              Executing Codes                                #
+if __name__ == "__main__":
+   mode = ""
+   while mode == "":
+      mode = input("Start regular mode? (y/n) ")
+      if len(mode) > 0:
+         if mode[0] == 'y' or mode[0] == 'Y':
+            start_regular_mode()
+            halt = input("HALT (press enter to end)")
+         elif mode[0] == 'n' or mode[0] == 'N':
+            start_analysis_mode()
+            halt = input("HALT (press enter to end)")
+         else:
+            print("Cannot recognize input.")
+            mode = ""
    
-   halt = input("HALT (press enter to end)")
+   
+   
    
    
    
