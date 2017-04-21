@@ -65,112 +65,18 @@ def get_kernel_shape(shape_str):
       print("Invalid shape string.")
       return None
 
-def adjust_labels(image_display, window_name, ref_pos, rel_pos,
-                  font_size = FONT_SIZE, font_thickness = FONT_THICKNESS):
-   """Allows the user to adjust some font properties on the displaying image.
-   Parameters
-   ----------
-   image_display : numpy matrix of integers
-      The image that will be used to displayed. Note that this must be the
-      original image possibly with only frames on.
-   window_name : string
-      The name of the displaying window.
-   ref_pos : List[(int, int)]
-      Stores the reference position for text.
-   rel_pos : (int, int)
-      Stores the coordinates relative to each point in ref_pos.
-   font_size : float
-      Stores the font size value.
-   font_thickness : int
-      Stores the font thickness value.
-   Returns
-   -------
-   rel_pos : (int, int)
-      Stores the coordinates relative to each point in ref_pos.
-   font_size : float
-      Stores the font size value.
-   font_thickness : int
-      Stores the font thickness value.
+
+
+def two_norm(vec):
+   """Just a simplified funciton to compute 2-norm.
    """
-   print("Please enter a valid command to adjust font properties, type " +
-         "\"help\" for assistance, or enter " + DONE + " to proceed.")
-   user_input = ''
-   while user_input != DONE:
-      while len(user_input) == 0:
-         user_input = input()
-      input_list = user_input.split()
-      if len(input_list) > 1:
-         if input_list[0] == 'font' and input_list[1] == 'size':
-            if len(input_list) == 2:
-               print("Font size = " + str(font_size))
-            elif is_valid_type(input_list[2], float, "Please provide a " +
-                                 "number for font size"):
-               font_size = float(input_list[2])
-               image_display_c = image_display.copy()
-               label_vertices(image_display_c, ref_pos, rel_pos, font_size,
-                              font_thickness)
-               cv2.imshow(window_name, image_display_c)
-               cv2.waitKey(1)
-            user_input = ''
-         elif input_list[0] == 'font' and input_list[1] == 'thickness':
-            if len(input_list) == 2:
-               print("Font thickness = " + str(font_thickness))
-            elif is_valid_type(input_list[2], int, "Please provide an integer!"):
-               font_thickness = int(input_list[2])
-               image_display_c = image_display.copy()
-               label_vertices(image_display_c, ref_pos, rel_pos, font_size,
-                              font_thickness)
-               cv2.imshow(window_name, image_display_c)
-               cv2.waitKey(1)
-            user_input = ''
-         elif input_list[0] == 'text' and input_list[1] == 'position':
-            if len(input_list) == 2:
-               print("Currently the texts are at " + str(rel_pos) +
-                        " relative to the top-right corner of the frames.")
-            elif len(input_list) == 4:
-               directions = {'up' : -1, 'left' : -1, 'down' : 1, 'right' : 1}
-               if input_list[2] in directions and \
-                  is_valid_type(input_list[3], int,\
-                  "Please provide an integer to indicate the amount of units."):
-                  dir = input_list[2]
-                  val = int(input_list[3])
-                  if dir == 'left' or dir == 'right':
-                     rel_pos = (rel_pos[0] + directions[dir] * val, rel_pos[1])
-                  else:
-                     rel_pos = (rel_pos[0], rel_pos[1] + directions[dir] * val)
-                  image_display_c = image_display.copy()
-                  label_vertices(image_display_c, ref_pos, rel_pos, font_size,
-                                 font_thickness)
-                  cv2.imshow(window_name, image_display_c)
-                  cv2.waitKey(1)
-            user_input = ''
-         else:
-            print("Invalid command, please try again.")
-            user_input = ''
-      elif user_input[0] == 'h' or user_input[0] == 'H':
-         user_input = ''
-         print("There are three properties that can be adjusted here:")
-         print("font size, font thickness, and text position.")
-         print("Should you enter any of these key terms, the current value " +
-               "would be displayed.")
-         print("If you want to adjust the font size to some number x, please" +
-               " enter \"font size x\".")
-         print("If you want to adjust the font thickness to some number n, " +
-               "please enter \"font thickness n\".")
-         print("If you want to adjust the text position to some " + 
-               "direction(up, down, left, or right) dir for \nsome distance " +
-               "d, please enter \"text position dir d\".")
-         print("Also note that the font thickness value and the distance " +
-               "value should both be integers.")
-      elif user_input != DONE:
-         print("Invalid command, please try again.")
-         user_input = ''
-   return rel_pos, font_size, font_thickness
+   return np.linalg.norm(vec, 2)
+
 
 
 ####################### GUI Event Handler Subsection ##########################
 def crop(event, x, y, flags, image):
-   global ix, iy, drawing, cont, image_c, template
+   global ix, iy, drawing, cont, image_c, template_num
    if event == cv2.EVENT_LBUTTONDOWN:
       ix, iy = x, y
       drawing = True
@@ -183,7 +89,7 @@ def crop(event, x, y, flags, image):
       cv2.rectangle(image_c, (ix, iy), (x, y), RECT_COLOR, RECT_THICKNESS)
       tW = abs(ix - x)
       tH = abs(iy - y)
-      template = image[min(iy, y) : min(iy, y) + tH, min(ix, x) : min(ix, x) + tW]
+      template_num = ((min(iy, y), min(iy, y) + tH), (min(ix, x), min(ix, x) + tW))
    elif event == cv2.EVENT_RBUTTONUP:
       cont = False
 
@@ -201,6 +107,92 @@ def select(event, x, y, flags, image):
       nodes.append((x - int(tW / 2), y - int(tH / 2)))
    elif event == cv2.EVENT_RBUTTONUP:
       cont = False
+      
+def remove(event, x, y, flags, image):
+   global image_c, E, nodes_center, image_original, removed_stack, image_stack
+   if event == cv2.EVENT_LBUTTONDOWN:
+      if len(E) > 0:
+         result = [-1, -1]
+         dist_min = image_c.shape[0] + image_c.shape[1]
+         P = [x, y]
+         temp = [0, 0]
+         for e in E:
+            A = nodes_center[e[0] - BASE]
+            B = nodes_center[e[1] - BASE]
+            AP = get_vector(A, P)
+            AB = get_vector(A, B)
+            AB_unit = np.multiply(AB, 1.0 / two_norm(AB))
+            scalar_proj = np.inner(AP, AB) / two_norm(AB)
+            AB_len = get_distance(A, B)
+            dist = min(get_distance(A, P), get_distance(B, P))
+            if scalar_proj > 0 and AB_len > scalar_proj:
+               vec_proj = np.multiply(AB_unit, scalar_proj)
+               dist = two_norm(np.subtract(vec_proj, AP))
+            if dist < dist_min:
+               dist_min = dist
+               result = e
+               temp[0] = AB_len
+               temp[1] = scalar_proj
+         '''
+         print("(x, y) = " + str((x, y)))
+         print("Removing e = " + str(result) + "  dist_min = " + str(dist_min))
+         print("temp = " + str(temp))
+         '''
+         E.remove(result)
+         removed_stack.append(result)
+         image_stack.append(image_c.copy())
+         image_c = image_original.copy()
+         for e in E:
+            des1 = e[0]
+            des2 = e[1]
+            cv2.line(image_c, nodes_center[des1 - BASE], nodes_center[des2 - BASE], (0, 0, 255), 2)
+   elif event == cv2.EVENT_RBUTTONDOWN:
+      if len(removed_stack) > 0:
+         E.append(removed_stack.pop())
+         image_c = image_stack.pop()
+      
+def add(event, x, y, flags, image):
+   global image_c, E, nodes_center, image_original, image_stack, start_linking, i1, i2
+   if event == cv2.EVENT_LBUTTONDOWN:
+      start_linking = True
+      dist_min = image_original.shape[0] + image_original.shape[1]
+      for i in range(len(nodes_center)):
+         dist = get_distance([x, y], nodes_center[i])
+         if dist < dist_min:
+            dist_min = dist
+            i1 = i
+   elif event == cv2.EVENT_MOUSEMOVE:
+      if start_linking:
+         image_c = image.copy()
+         cv2.line(image_c, nodes_center[i1], (x, y), (0, 0, 255), 2)
+   elif event == cv2.EVENT_LBUTTONUP:
+      if start_linking:
+         start_linking = False
+         dist_min = image_original.shape[0] + image_original.shape[1]
+         for i in range(len(nodes_center)):
+            dist = get_distance([x, y], nodes_center[i])
+            if i != i1 and dist < dist_min:
+               dist_min = dist
+               i2 = i
+         if [i1 + BASE, i2 + BASE] not in E and [i2 + BASE, i1 + BASE] not in E:
+            cv2.line(image, nodes_center[i1], nodes_center[i2], (0, 0, 255), 2)
+            image_stack.append(image_c.copy())
+            image_c = image.copy()
+            E.append([i1 + BASE, i2 + BASE])
+            print(len(E))
+   elif event == cv2.EVENT_RBUTTONDOWN:
+      if len(image_stack) > 0:
+         E.pop()
+         image_c = image_stack.pop()
+         
+def filter(image_gray, trackbar_name, window_name):
+   global graph_bin
+   break_point = cv2.getTrackbarPos(TRACKBAR_THRESHOLD, window_name)
+   image_bin2 = get_binary_image_inv(image_gray, break_point, 255)
+   cv2.imshow(window_name, image_bin2)
+   cv2.waitKey(1)
+   graph_bin = image_bin2
+
 ############################  END OF SUBSECTION  ##############################
 
 #                               End of Section                                #
@@ -265,7 +257,8 @@ def get_image(show_graph = False):
       cv2.startWindowThread()
       cv2.namedWindow(GRAPH)
       cv2.imshow(GRAPH, graph)
-      cv2.waitKey(1)
+      cv2.waitKey()
+      cv2.destroyWindow(GRAPH)
 
    break_point = get_threshold(graph_gray)
    return graph, graph_gray, break_point, input_dir[index - BASE]
@@ -296,7 +289,7 @@ def load(filename):
    radius = eval(lines[1])
    return image, nodes_center, radius
 
-def initiate_UI(image, window_name, function, message):
+def initiate_UI(image, window_name, function, message, key_control = False):
    """Makes a certain window interactable for user to perform some task.
    Parameters
    ----------
@@ -306,20 +299,116 @@ def initiate_UI(image, window_name, function, message):
       The name of the window.
    function : python function
       This should be one of the functions defined in this subsection.
+   message : String
+      The message displayed to the user.
+   key_control : boolean
+      If true, then the UI stops when the user types in some certain text.
    Returns
    -------
    None
    """
    global cont, image_c
-   print(message)
-   cv2.namedWindow(window_name)
-   cv2.setMouseCallback(window_name, function, image)
    cont = True
    image_c = image.copy()
+   print(message)
+   cv2.namedWindow(window_name)
+   cv2.setMouseCallback(window_name, function, image_c)
+   
    while cont:
       cv2.imshow(window_name, image_c)
-      cv2.waitKey(1)
+      key = cv2.waitKey(1)
+      if key_control and key == ord(CLOSE):
+         cont = False
+      
+def get_graph_bin(image_gray, trackbar_name, window_name):
+   """Allows the user to manually adjust the threshold to obtain a decent
+   binary image.
+   Parameters
+   ----------
+   image_gray : numpy matrix of integers
+      Image data in grayscale.
+   trackbar_name: string
+   window_name : string
+   Returns
+   -------
+   graph_bin : numpy matrix of integers
+      Image data in desired binary form.
+   """
+   global graph_bin
+   graph_bin = image_gray.copy()
+   cv2.imshow(window_name, get_binary_image_inv(image_gray, 0, 255))
+   cv2.waitKey(1)
+   cv2.createTrackbar(trackbar_name, window_name, THRESHOLD_INIT, THRESHOLD_MAX,\
+                     lambda x: filter(image_gray, trackbar_name, window_name))
+   print("Slide for a desired threshold value, and press Return to proceed.")
+   while (1):
+      k = cv2.waitKey(1) & 0xFF
+      if k == 13:
+         break
+   cv2.destroyWindow(window_name)
+   return graph_bin
 
+def adjust_labels(image_display, window_name, ref_pos, rel_pos,
+                  font_size = FONTSIZE_BASE * FONTSIZE_INIT,\
+                  font_thickness = THICKNESS_BASE * THICKNESS_INIT):
+   """Allows the user to adjust some font properties on the displaying image.
+   Parameters
+   ----------
+   image_display : numpy matrix of integers
+      The image that will be used to displayed. Note that this must be a copy
+      of the original image possibly with only frames on.
+   window_name : string
+      The name of the displaying window.
+   ref_pos : List[(int, int)]
+      Stores the reference position for text.
+   rel_pos : (int, int)
+      Stores the coordinates relative to each point in ref_pos.
+   font_size : float
+      Stores the font size value.
+   font_thickness : int
+      Stores the font thickness value.
+   Returns
+   -------
+   rel_pos : (int, int)
+      Stores the coordinates relative to each point in ref_pos.
+   font_size : float
+      Stores the font size value.
+   font_thickness : int
+      Stores the font thickness value.
+   """
+   user_input = ''
+   while user_input == '':
+      user_input = input("Do you want to adjust the labels? (y/n) ")
+      if len(user_input) > 0:
+         if user_input[0] == 'y' or user_input[0] == 'Y':
+            print("Slide for a desired label outcome, and press Return to proceed.")
+            image_display_c = image_display.copy()
+            label_vertices(image_display_c, ref_pos, rel_pos, font_size, font_thickness)
+            cv2.imshow(window_name, image_display_c)
+            cv2.waitKey(1)
+            cv2.createTrackbar(TRACKBAR_FONTSIZE, window_name, FONTSIZE_INIT,\
+                                 FONTSIZE_MAX, lambda x: x)
+            cv2.createTrackbar(TRACKBAR_THICKNESS, window_name, THICKNESS_INIT,\
+                                 THICKNESS_MAX, lambda x: x)
+            while (1):
+               font_size = cv2.getTrackbarPos(TRACKBAR_FONTSIZE, window_name) * FONTSIZE_BASE
+               font_thickness = cv2.getTrackbarPos(TRACKBAR_THICKNESS, window_name) * THICKNESS_BASE
+               image_display_c = image_display.copy()
+               label_vertices(image_display_c, ref_pos, rel_pos, font_size, font_thickness)
+               cv2.imshow(window_name, image_display_c)
+               k = cv2.waitKey(1)
+               if k & 0xFF == 13:
+                  break
+               else:
+                  if k == 2490368:
+                     rel_pos = (rel_pos[0], rel_pos[1] - 1)
+                  elif k == 2621440:
+                     rel_pos = (rel_pos[0], rel_pos[1] + 1)
+                  elif k == 2424832:
+                     rel_pos = (rel_pos[0] - 1, rel_pos[1])
+                  elif k == 2555904:
+                     rel_pos = (rel_pos[0] + 1, rel_pos[1])
+   return rel_pos, font_size, font_thickness
 
 def extract_vertices(image_display, image_work, template, tW, tH):
    """Repeatedly asks the user for the amount of undetected vertices in the
@@ -364,7 +453,7 @@ def extract_vertices(image_display, image_work, template, tW, tH):
                locate_vertices(user_input, image_work, template, tW, tH, nodes)
                highlight_vertices(image_display2, nodes, tW, tH)
                image_display3 = image_display2.copy()
-               label_vertices(image_display3, nodes, rel_pos)
+               label_vertices(image_display3, nodes, rel_pos, FONTSIZE_INIT * FONTSIZE_BASE, THICKNESS_INIT * THICKNESS_BASE)
                cv2.startWindowThread()
                cv2.namedWindow(VERTICES)
                cv2.imshow(VERTICES, image_display3)
@@ -546,8 +635,50 @@ def sort_vertices(nodes, image_display, window_name, rel_pos, font_size, font_th
          print("Please answer with y/n.")
    return nodes
 
+def centralize(image_bin):
+   """Attempts to clean the noises to some degree. Ths function adapts a voting
+   method: every pixel with a value 1 will vote for the sorrounding pixels
+   which also have a value 1. After a few rounds the center skeleton will get
+   a much higher vote than the rest, hence the noises can be reduced.
+   Parameters
+   ----------
+   image_bin : numpy matrix of integers
+      The binary image that is being studied.
+   Returns
+   -------
+   """
+   global denoised
+   matrix = np.zeros(image_bin.shape)
+   for i in range(4):
+      matrix2 = matrix.copy()
+      for y in range(image_bin.shape[0]):
+         for x in range(image_bin.shape[1]):
+            if image_bin[y][x] == 1:
+               if i == 0:
+                  matrix2[y][x] = 1
+               else:
+                  nv = get_neighborhood_values(matrix, (x, y))
+                  for j in range(1, len(nv)):
+                     matrix2[y][x] += nv[j]
+      matrix = matrix2
+   max_value = 0
+   for y in range(matrix.shape[0]):
+      for x in range(matrix.shape[1]):
+         max_value = max(max_value, matrix[y][x])
+   for y in range(matrix.shape[0]):
+      for x in range(matrix.shape[1]):
+         matrix[y][x] = matrix[y][x] / max_value
+   image_bin2 = np.zeros(image_bin.shape, np.uint8)
+   for y in range(matrix.shape[0]):
+      for x in range(matrix.shape[1]):
+         image_bin2[y][x] = matrix[y][x] * 255
+   cv2.imshow(NOISE_REDUCTION, image_bin2)
+   cv2.waitKey(1)
+   # add a trackbar here
+   print("Slide for the best threshold value, and hit Esc to finish.")
 
-def noise_reduction(image_gray, break_point, filename, nodes_center, radius):
+
+def noise_reduction(image_gray, filename, nodes_center, radius):
    """This function interacts with the user to help them perform mathematical 
    morphology operations on the grayscale image, attempting to reduce the noise
    of the original image.
@@ -568,8 +699,8 @@ def noise_reduction(image_gray, break_point, filename, nodes_center, radius):
    result : numpy matrix of integers
       The result image.
    """
-   image_bin_inv = get_binary_image_inv(image_gray, break_point)
-   show_binary_image(image_bin_inv, "Noise Reduction")
+   image_bin_inv = get_binary_image(image_gray, THRESHOLD)
+   show_binary_image(image_bin_inv, NOISE_REDUCTION)
    image_stack = []
    message_stack = []
    image_stack.append(image_bin_inv)
@@ -640,7 +771,7 @@ def noise_reduction(image_gray, break_point, filename, nodes_center, radius):
                last_step = " (last step was (e)rosion)"
             image_stack.append(image_temp)
             message_stack.append(last_step)
-            show_binary_image(image_temp, "Noise Reduction")
+            show_binary_image(image_temp, NOISE_REDUCTION)
             print("Operation complete.")
             response = ''
          elif response[0] == 'u':
@@ -648,7 +779,7 @@ def noise_reduction(image_gray, break_point, filename, nodes_center, radius):
                image_stack.pop()
                message_stack.pop()
                image_temp = image_stack[-1]
-               show_binary_image(image_temp, "Noise Reduction")
+               show_binary_image(image_temp, NOISE_REDUCTION)
             else:
                print("There is no last step.")
             response = ''
@@ -669,7 +800,8 @@ def noise_reduction(image_gray, break_point, filename, nodes_center, radius):
             print("Image thinning complete.")
             image_stack.append(image_temp)
             message_stack.append(" (last step was (t)hin")
-            show_binary_image(image_temp, "Noise Reduction")
+            cv2.destroyWindow(NOISE_REDUCTION)
+            show_binary_image(image_temp, NOISE_REDUCTION)
             response = ''
          else:
             print("Invalid input, please try again!")
@@ -684,7 +816,9 @@ def noise_reduction(image_gray, break_point, filename, nodes_center, radius):
          print("(s)ave(this cannot be undone)")
          print("(t)hin")
          print("(u)ndo" + message_stack[-1])
-   cv2.destroyWindow("Noise Reduction")
+   cv2.destroyWindow(NOISE_REDUCTION)
+   if len(image_stack) > 0:
+      result = image_stack.pop()
    return result
 
 def hide_vertices(image, nodes_center, radius, color = 0):
@@ -751,7 +885,7 @@ def extract_edges(image_work, nodes_center, radius):
    show_binary_image(image_temp, "trails", True)
    '''
    
-   return E, deg_seq
+   return E
 
 def extract_edges2(image_work, nodes_center, radius):
    """An alternative way to obtain the edges of a graph.
@@ -778,7 +912,7 @@ def extract_edges2(image_work, nodes_center, radius):
    image_work2 = get_binary_image(image_work.copy(), 0, 255)
    for i in range(len(nodes_center)):
       cv2.putText(image_work2, str(i + BASE), nodes_center[i], cv2.FONT_HERSHEY_SIMPLEX,\
-            FONT_SIZE, 255, FONT_THICKNESS, cv2.LINE_AA, False)
+            FONTSIZE_BASE, 255, THICKNESS_BASE, cv2.LINE_AA, False)
    cv2.imshow("image_work2", image_work2)
    cv2.waitKey(1)
    deg_seq = []
@@ -794,7 +928,7 @@ def extract_edges2(image_work, nodes_center, radius):
    image_copy = image_work.copy()
    for i in intersections:
       cv2.putText(image_copy, str(intersections.index(i)), (i[0], i[1]), cv2.FONT_HERSHEY_SIMPLEX,\
-            FONT_SIZE, 255, FONT_THICKNESS, cv2.LINE_AA, False)
+            FONTSIZE_BASE, 255, THICKNESS_BASE, cv2.LINE_AA, False)
    cv2.imshow("image_copy", image_copy)
    cv2.waitKey()
    '''
@@ -822,11 +956,58 @@ def extract_edges2(image_work, nodes_center, radius):
       for v2 in result[v1]:
          if not [v1 + BASE, v2] in E and not [v2, v1 + BASE] in E:
             E.append([v1 + BASE, v2])
-   for v in result:
-      deg_seq.append(len(v))
+   
+   return E
+
+def correct_edges(image_work, E, nodes_center):
+   """Allows the user to manually correct the edges.
+   Parameters
+   ----------
+   image_work : numpy matrix of integers
+      The image that is being studied.
+   E : List[[int, int]]
+      The edge list.
+   nodes_center : List[[int, int]]
+      Stores the estimated center coordinates of the vertices.
+   Returns
+   -------
+   None
+   """
+   global image_original, cont, removed_stack, image_stack, start_linking
+   image_original = image_work.copy()
+   removed_stack = []
+   image_stack = []
+   start_linking = False
+   for edge in E:
+      des1 = edge[0]
+      des2 = edge[1]
+      cv2.line(image_work, nodes_center[des1 - BASE],\
+               nodes_center[des2 - BASE], (0, 0, 255), 2)
+   response = ""
+   while response == "":
+      response = input("Do you want to correct the edge(s) manually?(y/n) ")
+      if len(response) > 0:
+         if (response[0] == 'y' or response[0] == 'Y'):
+            initiate_UI(image_work, OUTPUT, remove, "Remove false edges in " +
+                        "the output window, and hit 'x' when finished.", True)
+            image_work = image_original.copy()
+            for edge in E:
+               des1 = edge[0]
+               des2 = edge[1]
+               cv2.line(image_work, nodes_center[des1 - BASE],\
+                        nodes_center[des2 - BASE], (0, 0, 255), 2)
+            initiate_UI(image_work, OUTPUT, add, "Add undetected edges in " +
+                        "the output window, and hit 'x' when finished.", True)
+         elif response[0] != 'n' and response[0] != 'N':
+            response = ""
+            print("Invalis input.")
+   deg_seq = [0] * len(nodes_center)
+   for e in E:
+      deg_seq[e[0] - BASE] += 1
+      deg_seq[e[1] - BASE] += 1
    return E, deg_seq
 
-def output(E, end_points, deg_seq):
+def output(E, deg_seq):
    """Shows all the edges.
    Parameters
    ----------
@@ -846,9 +1027,10 @@ def output(E, end_points, deg_seq):
 def start_regular_mode():
    """Starts the program with regular mode.
    """
-   global ix, iy, drawing, template, tH, tW
+   global ix, iy, drawing, template_num, tH, tW, image_original, E, nodes_center
    # Set up the graph image.
-   graph, graph_gray, break_point, filename = get_image(True)
+   graph, graph_gray, break_point, filename = get_image()
+   image_original = graph.copy()
    filename_array = filename.split('.')
    filename = filename_array[0]
    
@@ -857,12 +1039,18 @@ def start_regular_mode():
    drawing = False
    template = None
    
+   # Obtain a desired binary version of the graph so that the noises can be
+   # reduced at the beginning.
+   graph_bin = get_graph_bin(graph_gray, TRACKBAR_THRESHOLD, GRAPH)
+   
    # Crop an example of the vertices.
-   initiate_UI(graph.copy(), GRAPH, crop,\
+   graph_gray2 = get_binary_image(graph_bin, 0, 255)
+   graph2 = cv2.cvtColor(graph_gray2, cv2.COLOR_GRAY2BGR)
+   initiate_UI(graph2, GRAPH, crop,\
       "Please crop an example of the vertices in " + GRAPH + " window.")
 
    # Process the template.
-   template, (tH, tW), radius = process_template(template)
+   template, (tH, tW), radius = process_template(graph2, template_num)
    
    # Find all the vertices. In particular variable nodes stores a list of
    # nodes' upper-right corner.
@@ -876,7 +1064,7 @@ def start_regular_mode():
    nodes_center = get_center_pos(nodes, tW, tH)
 
    # Process the image, then extract all the edges.
-   graph_work = noise_reduction(graph_gray, break_point, filename, nodes_center, radius)
+   graph_work = noise_reduction(graph_gray2, filename, nodes_center, radius)
    hide_vertices(graph_work, nodes_center, radius)
    
    '''
@@ -884,10 +1072,10 @@ def start_regular_mode():
    cv2.imshow("graph_display", graph_display)
    cv2.waitKey()
    '''
-   # E, end_points, deg_seq = extract_edges(graph_work, nodes_center, radius)
-   # end_points = [] + end_points
-   # output(E, end_points, deg_seq)
-   # get_invariants(E, len(deg_seq))
+   E = extract_edges(graph_work, nodes_center, radius)
+   E, deg_seq = correct_edges(graph.copy(), E, nodes_center)
+   output(E, deg_seq)
+   get_invariants(E, len(deg_seq))
    
 def start_analysis_mode():
    """In this mode, the input will be taken from a previous data source.
@@ -898,11 +1086,17 @@ def start_analysis_mode():
 [223, 277]
 [225, 282]
    '''
+   global E, nodes_center
+   graph = cv2.imread("graph_input/P72A.jpg")
    graph_work, nodes_center, radius = load("P72A")
    
    
    hide_vertices(graph_work, nodes_center, radius)
-   E, deg_seq = extract_edges2(graph_work, nodes_center, radius)
+   centralize(graph_work)
+   
+   '''
+   E = extract_edges2(graph_work, nodes_center, radius)
+   E, deg_seq = correct_edges(graph.copy(), E, nodes_center)
    print(E)
    print(deg_seq)
    
@@ -915,11 +1109,10 @@ def start_analysis_mode():
       line += '\n'
       f.write(line)
    f.close()
+   '''
    
 #=============================================================================#
 #                             Under Development                               
-
-    
 
 
 
@@ -948,3 +1141,20 @@ if __name__ == "__main__":
    
    
    # 1130 Th ART338
+   
+   """
+   try hough transform, and some variations of it, eg burn algorithm
+   notes of cse 455
+   
+   try machine learning on crosses first
+   sklearn
+   map equation
+   voting strategy might work
+   """
+   
+   """
+   G = (V, E)
+   V = [1, 2, 3]
+   E = [[1, 2], [2, 3]]
+   
+   """

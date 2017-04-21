@@ -7,6 +7,7 @@
 # Default directories of the input files.
 GRAPH_PATH = 'graph_input' + str(sep)
 TEMPLATE_PATH = 'vertex_example' + str(sep)
+DATA_PATH = 'data_input' + str(sep)
 
 
 # Some default window names.
@@ -14,14 +15,18 @@ GRAPH = "Graph"
 TEMPLATE = "Template"
 VERTICES = "Vertices"
 VERTICES_W_LBL = "Vertices with Labels"
+OUTPUT = "Output"
+NOISE_REDUCTION = "Noise Reduction"
 
 # The input indicating that the step is complete, only used to test uesr input.
 DONE = 'done'
+CLOSE = 'x'
 
 # The place holding tuple used for some undetermined coordinate or elements
 # pending to be removed or to be ignored.
 PLACE_HOLDER_INT = -1
 PLACE_HOLDER_COOR = (-1, -1)
+PLACE_HOLDER_EDGE = [-1, -1]
 
 # The relative position of the label of each node when displaying them.
 # Alternatively if REL_POS = 'MIDDLE' is active, then the label will be placed
@@ -53,8 +58,8 @@ THRESHOLD = 127
 # Indicating the font properties of the numbers displayed on the image.
 FONT_COLOR = (0, 0, 255)
 FONT_COLOR_G = (FONT_COLOR[-1], 0, FONT_COLOR[0])
-FONT_THICKNESS = 1 # must be an integer
-FONT_SIZE = 0.5
+THICKNESS_BASE = 1 # must be an integer
+FONTSIZE_BASE = 0.1
 
 # Indicating the label(rectangle) properties.
 RECT_COLOR_C = (255, 255, 255) # for cropping, in an order Blue-Green-Red, as opposed to RGB
@@ -73,7 +78,8 @@ DILATION_ITR = 0
 EROSION_ITR = 0
 
 # Indicating how wide the normal distribution should be.
-SIGMA = 1
+SIGMA = 2
+MU = 4
 
 # Indicating the max value in a binary image.
 BIN_MAX = 1
@@ -88,3 +94,14 @@ SUFFIX = ".png"
 OUTPUT_FONT = 8
 GRAPH_SIZE_MAX = (1024, 768)
 OUTPUT_CONSOLE_HEIGHT = 200
+
+# These are trackbar constants.
+THRESHOLD_INIT = 0
+THRESHOLD_MAX = 255
+TRACKBAR_THRESHOLD = "Threshold"
+FONTSIZE_INIT = 5
+FONTSIZE_MAX = 10
+TRACKBAR_FONTSIZE = "Size"
+THICKNESS_INIT = 1
+THICKNESS_MAX = 4
+TRACKBAR_THICKNESS = "Thickness"

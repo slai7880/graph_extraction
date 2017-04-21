@@ -184,8 +184,7 @@ def highlight_vertices(image, nodes, tW, tH):
       cv2.rectangle(image, nodes[i], (nodes[i][0] + tW,  nodes[i][1] + tH),
                      RECT_COLOR, RECT_THICKNESS)
 
-def label_vertices(image, ref_pos, rel_pos, font_size = FONT_SIZE,
-                  font_thinkness = FONT_THICKNESS):
+def label_vertices(image, ref_pos, rel_pos, font_size, font_thinkness):
    """Labels all the vertices with indices.
    Parameters
    ----------
@@ -583,8 +582,8 @@ def get_weight(x):
       A weighting coefficient.
    """
    # using a normal distribution
-   mu = 1
-   sigma = 2
+   mu = MU
+   sigma = SIGMA
    f = (exp(-pow(x - mu, 2) / (2 * pow(sigma, 2)) / (sqrt(2 * pi) * sigma)))
    return f
 
@@ -671,15 +670,13 @@ def get_score(vec1, vec2, target = -1):
    The square difference between their cosine value and the target value.
    """
    cos = np.inner(vec1, vec2) / (np.linalg.norm(vec1, 2) * np.linalg.norm(vec2, 2))
-   print("vec1 = " + str(vec1))
-   print("vec2 = " + str(vec2))
    return pow(cos - target, 2)
 #                               End of Section                                #
 ###############################################################################
 ###############################################################################
 #                               Main Functions                                #
 
-def process_template(template):
+def process_template(image, template_num):
    """Extracts the edges in the template.
    Parameters
    ----------
@@ -693,7 +690,7 @@ def process_template(template):
    radius : float
       Half of the length of the diagonal of the template.
    """
-   template = cv2.Canny(template, 50, 200)
+   template = cv2.Canny(image[template_num[0][0] : template_num[0][1], template_num[1][0] : template_num[1][1]], 50, 200)
    (tH, tW) = template.shape[:2]
    
    # this will serve as a threshold of the distance from some end point of
@@ -1153,9 +1150,12 @@ def draw_vectors(image_bin, starting_points, vectors):
    """
    image_temp = image_bin.copy();
    for i in range(len(starting_points)):
+      cv2.putText(image_temp, str(i), (starting_points[i][0], starting_points[i][1]), cv2.FONT_HERSHEY_SIMPLEX,\
+            FONT_SIZE, 255, FONT_THICKNESS, cv2.LINE_AA, False)
       for j in range(len(vectors[i])):
          cv2.arrowedLine(image_temp, (starting_points[i][0], starting_points[i][1]),\
                            (int(np.ceil(starting_points[i][0] + 10 * vectors[i][j][0])), int(np.ceil(starting_points[i][1] + 10 * vectors[i][j][1]))), 255)
+   print("vectors[4] = " + str(vectors[4]))
    cv2.imshow("vectors", image_temp)
    cv2.waitKey(1)
 
@@ -1474,6 +1474,9 @@ def restore_graph(v2i, linked_to, outgoing, bridges_array):
          prev = prev_temp
    return viv
       
+"""
+try min weight matching
+"""
 
 #                               End of Section                                #
 ###############################################################################
