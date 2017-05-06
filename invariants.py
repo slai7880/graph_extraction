@@ -1,4 +1,23 @@
+'''
+invariants.py
+Sha Lai
+5/6/2017
+
+This file includes functions that compute some invariants of a graph. Currently
+the invariants includes:
+
+completeness
+connectivity
+characteristic polynomial
+chromatic polynomial
+chromatic number
+maximal cliques
+
+'''
+
 import numpy as np
+from time import time
+from copy import deepcopy
 
 BASE = 1
 
@@ -93,6 +112,28 @@ def get_set(list):
         return set()
     else:
         return {e for e in list}
+        
+def get_endpoints_from_edges(edges, vertex_amount):
+    """Given a list of edges, returns a list of endpoint list of base 1.
+    Parameters
+    ----------
+    edges : List[[int, int]]
+        The edge list, any integer inside must base 1.
+    vertex_amount : int
+        The amount of vertices.
+    Returns
+    -------
+    endpoints : List[List[int]]
+    """
+    endpoints = []
+    for i in range(vertex_amount + 1):
+        endpoints.append([])
+    for e in edges:
+        endpoints[e[0]].append(e[1])
+        endpoints[e[1]].append(e[0])
+    return endpoints
+    
+
            
 #                               End of Section                                #
 ###############################################################################
@@ -160,15 +201,28 @@ def get_chrom_poly(edge_list, n_current, n_total):
         result[n_current - BASE] = 1
         return result
     else:
-        redu1 = edge_list[1:]
-        redu2 = edge_list[1:]
+        redu1 = deepcopy(edge_list[1:])
+        redu2 = deepcopy(edge_list[1:])
         first = edge_list[0]
         for edge in redu2:
             for i in range(len(edge)):
                 if edge[i] == first[1]:
                     edge[i] = first[0]
-        return subtract(get_chrom_poly(redu1, n_current, n_total),\
+        adj_mat = []
+        for i in range(n_current):
+            row = [0] * n_current
+            for j in range(n_current):
+                if [i + BASE, j + BASE] in redu2 or [j + BASE, i + BASE] in redu2:
+                    row[j] = 1
+            adj_mat.append(row)
+        redu2 = []
+        for i in range(n_current):
+            for j in range(i + 1, n_current):
+                if adj_mat[i][j] == 1:
+                    redu2.append([i + BASE, j + BASE])
+        result = subtract(get_chrom_poly(redu1, n_current, n_total),\
                         get_chrom_poly(redu2, n_current - 1, n_total))
+        return result
 
 def get_chrom_num(chrom_poly):
     """Computes the chromatic number of a graph.
@@ -217,7 +271,7 @@ def BronKerbosch2(R, P, X, result, endpoints):
             P = P - {v}
             X = X | {v}
 
-def get_invariants(edge_list, vertex_amount, endpoints):
+def get_invariants(edge_list, vertex_amount):
     """Evaluates the invariants of a graph.
     Parameters
     ----------
@@ -229,27 +283,67 @@ def get_invariants(edge_list, vertex_amount, endpoints):
     -------
     None
     """
+    endpoints = get_endpoints_from_edges(edge_list, vertex_amount)
+    start = time()
     adj_mat = get_adj_mat(edge_list, vertex_amount)
     completeness = is_complete(adj_mat)
     connectivity = is_connected(adj_mat, vertex_amount)
+    end = time()
+    print("Connected? " + str(connectivity))
+    #print("Time used to determine connectivity = " + str(end - start) + " sec\n")
     
+    start = time()
+    char_poly = np.poly(adj_mat)
+    end = time()
+    print("Characteristic Polynomial Coefficients: " + str(char_poly))
+    #print("Time used to determine characteristic polynomial = " + str(end - start) + " sec\n")
+    
+    
+    start = time()
     chrom_poly = get_chrom_poly(edge_list, vertex_amount, vertex_amount)
-    chrom_num = get_chrom_num(chrom_poly)
+    end = time()
+    print("Chromatic Polynomial Coefficients: " + str(chrom_poly))
+    #print("Time used to determine chromatic polynomial = " + str(end - start) + " sec\n")
     
+    start = time()
+    chrom_num = get_chrom_num(chrom_poly)
+    end = time()
+    print("Chromatic Number: " + str(chrom_num))
+    #print("Time used to determine chromatic number = " + str(end - start) + " sec\n")
+    
+    
+    start = time()
     maximal_cliques = []
-    BronKerbosch2(set(), {i for i in range(vertex_amount)}, set(), maximal_cliques, endpoints)
-    print(maximal_cliques)
+    BronKerbosch2(set(), {(i + BASE) for i in range(vertex_amount)}, set(), maximal_cliques, endpoints)
+    end = time()
+    print("Maximal Cliques: " + str(maximal_cliques))
+    #print("Time used to determine cliques = " + str(end - start) + " sec\n")
+    
+    '''
+    print("Connected? " + str(connectivity))
+    print("Characteristic Polynomial Coefficients: " + str(char_poly))
+    print("Chromatic Polynomial Coefficients: " + str(chrom_poly))
+    print("Chromatic Number: " + str(chrom_num))
+    print("Maximal Cliques: " + str(maximal_cliques))
+    '''
 
 #                               End of Section                                #
 ###############################################################################
 ###############################################################################
 #                               Executing Codes                               #
             
-            
-edge_list = [[1, 2], [3, 4]]
-endpoints = [[1], [0], [3], [2]]
-vertex_amount = 4
+'''
+edge_list = [[1,2],[1,6],[2,3],[2,9],[3,4],[3,12],[4,5],[4,15],[5,1],[5,18],[6,7],[6,20],[7,8],[7,21],[8,9],[8,24],[9,10],[10,11],[10,25],[11,12],[11,28],[12,13],[13,14],[13,29],[14,15],[14,32],[15,16],[16,17],[16,33],[17,18],[17,36],[18,19],[19,20],[19,37],[20,40],[21,22],[21,40],[22,23],[22,41],[23,24],[23,43],[24,25],[25,26],[26,27],[26,44],[27,28],[27,46],[28,29],[29,30],[30,31],[30,47],[31,32],[31,49],[32,33],[33,34],[34,35],[34,50],[35,36],[35,52],[36,37],[37,38],[38,39],[38,53],[39,40],[39,55],[41,42],[41,55],[42,43],[42,56],[43,44],[44,45],[45,46],[45,57],[46,47],[47,48],[48,49],[48,58],[49,50],[50,51],[51,52],[51,59],[52,53],[53,54],[54,55],[54,60],[56,57],[56,60],[57,58],[58,59],[59,60]]
+vertex_amount = 60
+#edge_list = [[1, 2], [2, 3], [3, 1]]
+#vertex_amount = 3
+endpoints = get_endpoints_from_edges(edge_list, vertex_amount)
+deg_seq = []
+for l in endpoints:
+    deg_seq.append(len(l))
+print(deg_seq)
 get_invariants(edge_list, vertex_amount, endpoints)
+'''
 
 #                               End of Section                                #
 ###############################################################################
