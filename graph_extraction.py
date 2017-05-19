@@ -154,9 +154,25 @@ the second one obtains the information of all the intersections first, and then
 analyze them in order to yield the best result (the error is minimized). It is
 not hard to tell that the time complexity of the second method is significantly
 greater than that of the first one.
+
+Copyright 2017 Sha Lai
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 '''
 
 from common import *
+
+
 ###############################################################################
 #                             Helper Functions                                #
 
@@ -184,7 +200,7 @@ def highlight_vertices(image, nodes, tW, tH):
       cv2.rectangle(image, nodes[i], (nodes[i][0] + tW,  nodes[i][1] + tH),
                      RECT_COLOR, RECT_THICKNESS)
 
-def label_vertices(image, ref_pos, rel_pos, font_size, font_thinkness):
+def label_vertices(image, ref_pos, rel_pos, font_size, font_thinkness, tW = 0, tH = 0):
    """Labels all the vertices with indices.
    Parameters
    ----------
@@ -212,6 +228,8 @@ def label_vertices(image, ref_pos, rel_pos, font_size, font_thinkness):
       position = (x, y)
       cv2.putText(image, str(i + BASE), position, cv2.FONT_HERSHEY_SIMPLEX,\
          font_size, FONT_COLOR, font_thinkness, cv2.LINE_AA, False)
+      if tW * tH != 0:
+         cv2.rectangle(image, ref_pos[i], (ref_pos[i][0] + tW, ref_pos[i][1] + tH), RECT_COLOR, RECT_THICKNESS)
 
 def draw_edges(image, edges_center, using_console = True):
    """Puts a label near the center pixel of each edge.
@@ -281,6 +299,12 @@ def get_distance(p1, p2):
    """
    return sqrt(pow(p1[0] - p2[0], 2) + pow(p1[1] - p2[1], 2))
 
+def get_center(p1, p2):
+   """Obtains the center of the two points.
+   p1 and p2 : [int, int]
+      Represents coordinates.
+   """
+   return [(p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2]
 
 def remove_nodes(user_input, nodes):
    """Removes false vertices based on the user input.
@@ -349,6 +373,9 @@ def remove_edges(user_input, E, edges_center):
    edges_center = [edges_center[i] for i in range(len(edges_center))\
                      if not i in removing]
    return E, edges_center
+
+
+
 
 ###########################  IMAGE THINNING  ##################################
 """The following functions implements a modified version of zhang-seun's image
@@ -434,6 +461,60 @@ def thin(image_bin):
                   count += 1
             if count > 2:
                mat[y, x] = 0
+            elif count == 2:
+               vec_sum = [0, 0]
+               for i in [1, 3, 5, 7]:
+                  if nv[i] == 1:
+                     vec_sum = np.add(vec_sum, get_vector(n[0], n[i]))
+               if vec_sum[0] != 0 or vec_sum[1] != 0:
+                  for i in [2, 4, 6, 8]:
+                     if nv[i] == 1:
+                        vec_sum = np.add(vec_sum, get_vector(n[0], n[i]))
+                  if vec_sum[0] != 0 or vec_sum[1] != 0:
+                     mat[y, x] = 0
+   return mat
+
+def thin2(image_bin): # for comparison
+   """Thins a given binary image with zhang-seun's algorithm, assuming that in
+   the image 1 represents the actual content while 0 represents the background.
+   Parameters
+   ----------
+   image_bin : numpy matrix of integers
+      The binary image that is being studied.
+   Returns
+   -------
+   mat : numpy matrix of integers
+      A thinned version of the original binary image.
+   """
+   mat = image_bin.copy()
+   if mat.shape[0] < 3 or mat.shape[1] < 3:
+      sys.exit("Invalid image input: " + str(mat.shape))
+   keep_itr = True
+   while keep_itr:
+      output1 = examine(mat, test1)
+      for coor in output1:
+         mat[coor[0], coor[1]] = 0
+      output2 = examine(mat, test2)
+      for coor in output2:
+         mat[coor[0], coor[1]] = 0
+      if len(output1) + len(output2) == 0:
+         keep_itr = False
+   
+   # This is an extra part. Here we further reduce unnecessary pixels while
+   # maintaining the connectivity by removing T-shape structures. The main
+   # purpose is to increase the accuracy of intersection recognition.
+   for y in range(mat.shape[0]):
+      for x in range(mat.shape[1]):
+         if mat[y, x] == 1:
+            n = get_neighborhood(mat, [x, y])
+            nv = get_neighborhood_values(mat, [x, y])
+            count = 0
+            for i in [1, 3, 5, 7]:
+               if nv[i] == 1:
+                  count += 1
+            if count > 2:
+               mat[y, x] = 0
+   
    return mat
 
 ############################  END OF SUBSECTION  ##############################
@@ -593,7 +674,7 @@ def get_vector_sum_in(vector_list):
    weight function is set to be the normal distribution functino.
    Parameters
    ----------
-   vector_list : List[[int, int]]
+   vector_list : List[[float, float]]
       Each element is a pair of coordinates in the form [x, y].
    Returns
    -------
@@ -614,7 +695,7 @@ def get_vector_sum_out(vector_list):
    weight function is set to be the normal distribution functino.
    Parameters
    ----------
-   vector_list : List[[int, int]]
+   vector_list : List[[float, float]]
       Each element is a pair of coordinates in the form [x, y].
    Returns
    -------
@@ -626,8 +707,25 @@ def get_vector_sum_out(vector_list):
       result[0] += vector_list[i][0] * get_weight(i)
       result[1] += vector_list[i][1] * get_weight(i)
    n = np.linalg.norm(result, 2)
-   result[0] /= n
-   result[1] /= n
+   if n != 0:
+      result[0] /= n
+      result[1] /= n
+   return result
+
+def get_vector_list(point_list):
+   """Obtains a list of vectors for each two adjacent points in the list.
+   Parameters
+   ----------
+   point_list : List[[int, int]]
+      The list of points.
+   Returns
+   -------
+   vector_list : List[[int, int]]
+      Each element is a pair of coordinates in the form [x, y].
+   """
+   result = []
+   for i in range(1, len(point_list)):
+      result.append(get_vector(point_list[i - 1], point_list[i]))
    return result
 
 def is_intersection(current_pos, next):
@@ -656,7 +754,7 @@ def is_intersection(current_pos, next):
             return True
    return False
    
-def get_score(vec1, vec2, target = -1):
+def get_error(vec1, vec2, target = -1):
    """Computes the score of the two given vectors. Here the score is defined to
    be the square difference between their cosine value and the target value.
    Parameters
@@ -775,20 +873,26 @@ def get_endpoints(image_bin, nodes_center, radius):
       for y in range(image_bin.shape[0]):
          candidates = []
          if image_bin[y, x] == 1:
-            for i in range(len(nodes_center)):
-               d = get_distance((x, y), nodes_center[i])
-               if d < radius + 1:
-                  new_end = True
-                  endpoints_icopy = endpoints[i][:]
-                  for ep in endpoints_icopy:
-                     n = get_neighborhood(image_bin, ep)
-                     if [x, y] in n:
-                        new_end = False
-                        if d < get_distance(ep, nodes_center[i]):
-                           endpoints[i].remove(ep)
-                           endpoints[i].append([x, y])
-                  if new_end:      
-                     endpoints[i].append([x, y])
+            nv = get_neighborhood_values(image_bin, (x, y))
+            count = 0
+            for i in range(1, len(nv)):
+               if nv[i] == 1:
+                  count += 1
+            if count == 1:
+               for i in range(len(nodes_center)):
+                  d = get_distance((x, y), nodes_center[i])
+                  if d < radius * 1.5:
+                     new_end = True
+                     endpoints_icopy = endpoints[i][:]
+                     for ep in endpoints_icopy:
+                        n = get_neighborhood(image_bin, ep)
+                        if [x, y] in n:
+                           new_end = False
+                           if d < get_distance(ep, nodes_center[i]):
+                              endpoints[i].remove(ep)
+                              endpoints[i].append([x, y])
+                     if new_end:      
+                        endpoints[i].append([x, y])
    return endpoints
 
 #=============================================================================#
@@ -841,7 +945,7 @@ def get_edge(image_bin, current_pos, trail, known, nodes_center,
       if get_distance(nodes_center[i], current_pos) < radius + 1 and\
          i != starting_index:
          #print("Vertex reached.")
-         return [starting_index + BASE, i + BASE], trail
+         return [starting_index, i], trail
    n = get_neighborhood(image_bin, current_pos)
    nv = get_neighborhood_values(image_bin, current_pos)
    
@@ -949,7 +1053,7 @@ def get_edge(image_bin, current_pos, trail, known, nodes_center,
 #=============================================================================#
 #                                  Method 2                                   #
 
-def find_vertices(image_bin, endpoints, intersections_skirt_all, v2v, known,\
+def find_vertices(image_bin, endpoints, intersections_9_all, v2v, known,\
                   current, starting):
    """Finds the other vertices which the one being studied directly links to
    without intersecting any other edge.
@@ -961,7 +1065,7 @@ def find_vertices(image_bin, endpoints, intersections_skirt_all, v2v, known,\
    endpoints : List[[int, int]]
       The ith list in endpoints contains all the pixel coordinates that are the
       starting points of the edges from the ith vertex.
-   intersections_skirt_all: List[(int, int)]
+   intersections_9_all: List[(int, int)]
       Stores all the pixels adjacent to the intersection points.
    v2v : {int : List[int]}
       Each key is the index of a vertex, each value is a list indices of other
@@ -981,13 +1085,13 @@ def find_vertices(image_bin, endpoints, intersections_skirt_all, v2v, known,\
       if current in endpoints[i] and i != starting and not i in v2v[starting]:
          temp = i
          v2v[starting].append(i)
-   if temp == -1 and not current in intersections_skirt_all:
+   if temp == -1 and not current in intersections_9_all:
       known.append(current)
       n = get_neighborhood(image_bin, current)
       nv = get_neighborhood_values(image_bin, current)
       for i in range(1, len(n)):
          if nv[i] == 1 and not n[i] in known:
-            find_vertices(image_bin, endpoints, intersections_skirt_all, v2v,\
+            find_vertices(image_bin, endpoints, intersections_9_all, v2v,\
                            known, n[i], starting)
 
 def find_intersections(image_bin, end_point):
@@ -1006,7 +1110,7 @@ def find_intersections(image_bin, end_point):
    intersections : List[List[int, int]]
       A list of intersection points. Note that the index of each intersection
       in this list is unique across the program.
-   intersections_skirt : List[List[int, int]]
+   intersections_9 : List[List[int, int]]
       A list of points in the 8-point neighborhood of each intersection. This
       list maybe useful in other functions.
    """
@@ -1068,13 +1172,13 @@ def find_intersections(image_bin, end_point):
    cv2.imshow("image_temp", image_temp)
    cv2.waitKey(1)
    '''
-   intersections_skirt = []
+   intersections_9 = []
    for i in range(len(intersections)):
-      intersections_skirt.append(get_neighborhood(image_bin, intersections[i]))
-   return intersections, intersections_skirt
+      intersections_9.append(get_neighborhood(image_bin, intersections[i]))
+   return intersections, intersections_9
 
 def construct_network(image_bin, endpoints, intersections,\
-                           intersections_skirt, nodes_center):
+                           intersections_9, nodes_center):
    """Builds the network of the intersections and records the links between
    vertices and some intersections.
    Parameters
@@ -1087,7 +1191,7 @@ def construct_network(image_bin, endpoints, intersections,\
       starting points of the edges from the ith vertex.
    intersections : List[List[int, int]]
       A list of intersection points.
-   intersections_skirt : List[List[int, int]]
+   intersections_9 : List[List[int, int]]
       A list of points in the 8-point neighborhood of each intersection.
    nodes_center : List[[int, int]]
       Stores the estimated center coordinates of the vertices. This parameter
@@ -1116,7 +1220,7 @@ def construct_network(image_bin, endpoints, intersections,\
       print('')
    '''
    for i in range(len(intersections)):
-      n = intersections_skirt[i]
+      n = intersections_9[i]
       nv =  get_neighborhood_values(image_bin, intersections[i])
       linked_to.append([])
       outgoing.append([])
@@ -1124,7 +1228,7 @@ def construct_network(image_bin, endpoints, intersections,\
          if nv[j] == 1:
             find_path(image_bin, n[j], [intersections[i], n[j]],\
                      [intersections[i]], endpoints, intersections,\
-                     intersections_skirt, linked_to, outgoing, i, v2i,\
+                     intersections_9, linked_to, outgoing, i, v2i,\
                      nodes_center)
       print(linked_to)
       print(outgoing)
@@ -1133,34 +1237,10 @@ def construct_network(image_bin, endpoints, intersections,\
    draw_vectors(image_bin, intersections, outgoing);
    return linked_to, outgoing, v2i
       
-def draw_vectors(image_bin, starting_points, vectors):
-   """Draws vectors on a given binary image.
-   Parameters
-   ----------
-   image_bin : numpy matrix of integers
-      Stores the binary image that are being studied, with contents marked by
-      1s and background marked by 0s.
-   starting_points : List[(int, int)]
-      Stores the starting point of each vector.
-   vectors : List[List[(int, int)]]
-      Stores the vectors at each starting point.
-   Returns
-   -------
-   None
-   """
-   image_temp = image_bin.copy();
-   for i in range(len(starting_points)):
-      cv2.putText(image_temp, str(i), (starting_points[i][0], starting_points[i][1]), cv2.FONT_HERSHEY_SIMPLEX,\
-            FONT_SIZE, 255, FONT_THICKNESS, cv2.LINE_AA, False)
-      for j in range(len(vectors[i])):
-         cv2.arrowedLine(image_temp, (starting_points[i][0], starting_points[i][1]),\
-                           (int(np.ceil(starting_points[i][0] + 10 * vectors[i][j][0])), int(np.ceil(starting_points[i][1] + 10 * vectors[i][j][1]))), 255)
-   print("vectors[4] = " + str(vectors[4]))
-   cv2.imshow("vectors", image_temp)
-   cv2.waitKey(1)
+
 
 def find_path(image_bin, current_pos, trail, known, endpoints, intersections,\
-               intersections_skirt, linked_to, outgoing, starting_intersection,\
+               intersections_9, linked_to, outgoing, starting_intersection,\
                v2i, nodes_center):
    """Explores an outgoing path starting from an intersection, records when a
    destination is reached.
@@ -1195,8 +1275,8 @@ def find_path(image_bin, current_pos, trail, known, endpoints, intersections,\
       if current_pos in endpoints[m]:
          node_index = m
    intersection_index = -1
-   for m in range(len(intersections_skirt)):
-      if m != starting_intersection and current_pos in intersections_skirt[m]:
+   for m in range(len(intersections_9)):
+      if m != starting_intersection and current_pos in intersections_9[m]:
          intersection_index = m
    if node_index != -1:
       if not (-1 * (node_index + 1)) in linked_to[starting_intersection]:
@@ -1254,7 +1334,7 @@ def find_path(image_bin, current_pos, trail, known, endpoints, intersections,\
       for i in range(1, len(n)):
          if nv[i] == 1 and not n[i] in known:
             find_path(image_bin, n[i], trail + [n[i]], known, endpoints,\
-                        intersections, intersections_skirt, linked_to,\
+                        intersections, intersections_9, linked_to,\
                         outgoing, starting_intersection, v2i, nodes_center)
             '''
             temp = -1
@@ -1385,10 +1465,10 @@ def merge_2_intersections(linked_to_copy, outgoing_copy, indices):
              np.linalg.norm(outgoing_copy[indices[1]][(i + j) % n], 2))
       smallest = min(smallest, sum)
    '''
-   minimum = get_min_score(outgoing_copy[indices[0]], outgoing_copy[indices[1]], [])
+   minimum = get_min_error(outgoing_copy[indices[0]], outgoing_copy[indices[1]], [])
    return minimum
 
-def get_min_score(vec_list_static, vec_list_dynamic, current):
+def get_min_error(vec_list_static, vec_list_dynamic, current):
    """Computes the minimum score out of all the possible pairing options
    between the two given vector lists. Note that only one vector list needs to
    be permuted in order to obtain all the possible bijections.
@@ -1408,13 +1488,14 @@ def get_min_score(vec_list_static, vec_list_dynamic, current):
    if len(vec_list_dynamic) == 0:
       temp = 0
       for i in range(len(current)):
-         temp += get_score(vec_list_static[i], current[i], -1)
+         temp += get_error(vec_list_static[i], current[i], -1)
       return temp
    else:
       result = sys.maxsize;
       for i in range(len(vec_list_dynamic)):
          current.append(vec_list_dynamic[i])
-         result = min(result, get_min_score(vec_list_static, vec_list_dynamic[0 : i] + vec_list_dynamic[i + 1 :], current))
+         result = min(result, get_min_error(vec_list_static,\
+                     vec_list_dynamic[0 : i] + vec_list_dynamic[i + 1 :], current))
          current.pop()
       return result
 
@@ -1474,9 +1555,632 @@ def restore_graph(v2i, linked_to, outgoing, bridges_array):
          prev = prev_temp
    return viv
       
-"""
-try min weight matching
-"""
+#                              End of Subsection                              #
+#=============================================================================#
+#                                  Method 3                                   #
 
+################################## Objects ####################################
+
+class Node(object):
+   def __init__(self, location, is_real = False, index = -1):
+      """Constructs a Node object.
+      Parameters
+      ----------
+      location : [float, float]
+         The coordinate of the node.
+      is_real : boolean
+         True if this node is marking a vertex of the graph.
+      index : int
+         Non-negative if this node is marking a vertex, otherwise an
+         intersection.
+      """
+      self.location = location
+      self.is_real = is_real
+      self.index = index
+      self.neighbors = [] # stores the surrounding nodes
+      self.outgoings = [] # stores the vectors pointing to the surrounding nodes
+      self.link_to = {} # stores the link between outgoing vectors
+      
+   
+   def is_neighbor(self, other):
+      """Checks if the node other is a neighbor of the current node.
+      Parameters
+      ----------
+      other : Node
+         A Node object.
+      Returns
+      -------
+      A boolean value.
+      """
+      return other in neighbors
+      
+   # try to use this function so that the indices can be kept synced
+   def add_neighbor(self, node, vector):
+      """Records another node to be a neighbor of the current one.
+      Parameters
+      ----------
+      node : Node
+         Another node.
+      vector : [float, float]
+         The vector pointing from the current one.
+      Returns
+      -------
+      None
+      """
+      self.neighbors.append(node)
+      self.outgoings.append(vector)
+      
+   def build_links(self, pairs):
+      """Relates a vector to another one in the outgoings list.
+      Parameters
+      ----------
+      pairs : [int, int]
+         Stores the indices of the vectors being paired up.
+      Returns
+      -------
+      None
+      """
+      self.link_to = [0] * (len(self.neighbors))
+      for pair in pairs:
+         self.link_to[pair[0]] = pair[1]
+         self.link_to[pair[1]] = pair[0]
+   
+   def show(self):
+      """Prints the information of the current node.
+      """
+      print("is_real = " + str(self.is_real))
+      print("location = " + str(self.location))
+      print("index = " + str(self.index))
+      nbs = ""
+      for nb in self.neighbors:
+         nbs += str(nb.index) + "  "
+      print("neighbors =  " + nbs)
+      print("outgoings = " + str(self.outgoings))
+      print("link_to = " + str(self.link_to))
+   
+############################  END OF SUBSECTION  ##############################
+#############################  Helper Functions  ##############################
+
+def has_overlap(node1, node2, radius, coefficient = RADIUS_COEFFICIENT):
+   """Determines if the two nodes are connected AND closed enough to
+   each other.
+   Parameters
+   ----------
+   node1, node2 : Node
+      The two nodes being studied.
+   radius : float
+      The radius of the circles centered at the locations of each node.
+   coefficient : float
+      The coefficient used to set the range of tolerance.
+   Returns
+   -------
+   A boolean value.
+   """
+   local_messages = ["has_overlap"]
+   return node2 in node1.neighbors and\
+         get_distance(node1.location, node2.location) < radius * 1.5
+   local_messages.append(END_OF_FUNCTION)
+
+def merge_2_nodes(node1, node2, new_index):
+   """Merges two nodes into one: first, create a new node with location at the
+   center of the two nodes and determine the correct index of the new node;
+   then, fill in the new node with neccesary information; at the end, scan the
+   neighbors of the two previous nodes and for each of them, redirect the link
+   pointing towards the old node to the new one.
+   Parameters
+   ----------
+   node1, node2: Node
+      The two nodes to merge.
+   new_index : int
+      The index that may be assigned to the new node.
+   """
+   local_messages = ["merge_2_nodes"]
+   location = get_center(node1.location, node2.location)
+   local_messages.append("Before processing node1")
+   temp = ""
+   for n in node1.neighbors:
+      temp += str(n.index) + "  "
+   local_messages.append("n1(" + str(node1.index) + ").neighbors = " + temp)
+   temp = ""
+   for n in node2.neighbors:
+      temp += str(n.index) + "  "
+   local_messages.append("n2(" + str(node2.index) + ").neighbors = " + temp)
+   result = Node(location, node1.is_real or node2.is_real, max(node1.index, node2.index))
+   if not (node1.is_real or node2.is_real):
+      result.index = new_index
+      new_index -= 1
+   for i in range(len(node1.neighbors)):
+      neighbor = node1.neighbors[i]
+      if neighbor != node2:
+         result.neighbors.append(neighbor)
+         result.outgoings.append(node1.outgoings[i])
+      for j in range(len(neighbor.neighbors)):
+         if neighbor.neighbors[j] == node1:
+            neighbor.neighbors[j] = result
+   local_messages.append("\nAfter processing node1 but before node2")
+   for n in node1.neighbors:
+      temp += str(n.index) + "  "
+   local_messages.append("n1(" + str(node1.index) + ").neighbors = " + temp)
+   temp = ""
+   for n in node2.neighbors:
+      temp += str(n.index) + "  "
+   local_messages.append("n2(" + str(node2.index) + ").neighbors = " + temp)
+   temp = ""
+   for n in result.neighbors:
+      temp += str(n.index) + "  "
+   local_messages.append("result(" + str(result.index) + ").neighbors = " + temp)
+   for i in range(len(node2.neighbors)):
+      """
+      The reason why the case of node2 is so complicated here is due to the way
+      in which an intersection is recognized. At this point, if two nodes are too
+      closed to each other, then it is possible that they will be pointing to the
+      same neighbor.
+      """
+      if node2.neighbors[i] != node1 and node2.neighbors[i] != result:
+         if node2.neighbors[i] in result.neighbors:
+            node2_nb = node2.neighbors[i]
+            temp = ""
+            for n in node2_nb.neighbors:
+               temp += str(n.index) + "  "
+            local_messages.append("node2_nb(" + str(node2_nb.index) +\
+                                    ").neighbors = " + temp)
+            d1 = get_distance(node2_nb.location, node1.location)
+            d2 = get_distance(node2_nb.location, node2.location)
+            if d1 > d2:
+               result_i = node2_nb.neighbors.index(result)
+               node2_nb.neighbors = node2_nb.neighbors[0 : result_i] +\
+                                    node2_nb.neighbors[result_i + 1 :]
+               node2_nb.outgoings = node2_nb.outgoings[0 : result_i] +\
+                                    node2_nb.outgoings[result_i + 1 :]
+               node2_i = node2_nb.neighbors.index(node2)
+               node2_nb.neighbors[node2_i] = result
+            else:
+               node2_i = node2_nb.neighbors.index(node2)
+               node2_nb.neighbors = node2_nb.neighbors[0 : node2_i] +\
+                                    node2_nb.neighbors[node2_i + 1 :]
+               node2_nb.outgoings = node2_nb.outgoings[0 : node2_i] +\
+                                    node2_nb.outgoings[node2_i + 1 :]
+         else:
+            result.neighbors.append(node2.neighbors[i])
+            result.outgoings.append(node2.outgoings[i])
+            for j in range(len(node2.neighbors[i].neighbors)):
+               if node2.neighbors[i].neighbors[j] == node2:
+                  node2.neighbors[i].neighbors[j] = result
+   
+   local_messages.append("\nAt the end")
+   temp = ""
+   for n in result.neighbors:
+      temp += str(n.index) + "  "
+   local_messages.append("result(" + str(result.index) + ").neighbors = " + temp)
+   local_messages.append(END_OF_FUNCTION)
+   return result, new_index
+   
+def separate_indices(nodes_list, radius):
+   """Obtains a list of indices of the node pairs pending to merge, together
+   with a list of indices of the nodes that should be left untouched.
+   Parameters
+   ----------
+   nodes_list : List[Node]
+      The list of nodes pending to merge.
+   radius : float
+      This is used to determined if two nodes are closed to each other enough.
+   Returns
+   -------
+   couples : List[(int, int)]
+      Each element is a pair of indices.
+   singles : List[int]
+      Each element if an index.
+   """
+   local_messages = ["separate_indices"]
+   couples = []
+   is_paired = []
+   for i in range(len(nodes_list)):
+      if not i in is_paired:
+         for j in range(len(nodes_list)):
+            if i != j and (not j in is_paired) and\
+                  has_overlap(nodes_list[i], nodes_list[j], radius):
+               couples.append((i, j))
+               is_paired.append(i)
+               is_paired.append(j)
+               break
+   singles = []
+   for i in range(len(nodes_list)):
+      if not i in is_paired:
+         singles.append(i)
+   local_messages.append(END_OF_FUNCTION)
+   return couples, singles
+
+def get_pairing_options3(unpaired, current_list, result):
+   """Obtains all the pairing options for a given list of elements. This method
+   will not do anything the given list contains odd number of elements.
+   Parameters
+   ---------
+   unpaired : List
+      The elements pending to pair.
+   current_list : List
+      The elements already paired.
+   result : List
+      Contains all the possible pairing results.
+   Returns
+   -------
+   None
+   """
+   local_messages = ["get_pairing_options3"]
+   if len(unpaired) == 0:
+      result.append(deepcopy(current_list))
+   else:
+      current = unpaired[0]
+      for i in range(1, len(unpaired)):
+         current_list.append((current, unpaired[i]))
+         get_pairing_options3(unpaired[1 : i] + unpaired[i + 1:], current_list, result)
+         current_list.pop()
+   local_messages.append(END_OF_FUNCTION)
+
+def get_best_option3(vectors, options):
+   """Among all the pairing options for the outgoing vectors, chooses the best
+   one that yields the minimum error.
+   Parameters
+   ----------
+   vectors : List[[float, float]]
+      The list of vectors being analyzed.
+   options : List[List[(int, int)]]
+      Stores lists of pairing options.
+   Returns
+   -------
+   best_option : List[(int, int)]
+      The best option.
+   """
+   local_messages = ["get_best_option3"]
+   best_option = []
+   min_error = sys.maxsize
+   for option in options:
+      sum = 0
+      for pair in option:
+         sum += get_error(vectors[pair[0]], vectors[pair[1]])
+      if sum < min_error:
+         min_error = sum
+         best_option = option
+   local_messages.append(END_OF_FUNCTION)
+   return best_option
+
+def is_intersection3(image_bin, current_pos):
+   """Determines if the current position in the image is an intersection. A
+   point is an intersection if:
+   1. There are more than 2 neighbor pixels with value 1.
+   2. The sum of the vectors from the current position to each neighbor with
+      value 1 is not 0 vector.
+   Parameters
+   ----------
+   image_bin : numpy matrix of integers
+      The binary image of a graph.
+   current_pos : [int, int]
+      Position in the form [x, y].
+   Returns
+   -------
+   A boolean value.
+   """
+   local_messages = ["is_intersection3"]
+   n = get_neighborhood(image_bin, current_pos)
+   nv = get_neighborhood_values(image_bin, current_pos)
+   count = 0
+   vec_sum = [0, 0]
+   for i in range(1, len(n)):
+      if nv[i] == 1:
+         count += 1
+         vec_sum = np.add(vec_sum, get_vector(n[0], n[i]))
+   local_messages.append(END_OF_FUNCTION)
+   return count > 2 and (vec_sum[0] != 0 or vec_sum[1] != 0)
+
+def find_intersections3(image_bin):
+   """Finds all the intersections in the image.
+   Parameters
+   ----------
+   image_bin : numpy matrix of integers
+      The binary image of a graph.
+   Returns
+   -------
+   intersections : List[[int, int]]
+      Stores the intersection points.
+   intersections_9 : List[List[int, int]]
+      Stores the intersections and their 8-neighborhood.
+   """
+   local_messages = ["find_intersections3"]
+   intersections = []
+   intersections_9 = []
+   for y in range(image_bin.shape[0]):
+      for x in range(image_bin.shape[1]):
+         if image_bin[y, x] == 1 and is_intersection3(image_bin, [x, y]):
+            intersections.append([x, y])
+            intersections_9.append(get_neighborhood(image_bin, [x, y]))
+   local_messages.append(END_OF_FUNCTION)
+   return intersections, intersections_9
+
+def restore_one_edge(starting_index, prev_node, current_node, E):
+   """Attempts to determine which other vertex is one linking to.
+   Parameters
+   ----------
+   starting_index : int
+      The index of the starting vertex.
+   prev_node : Node
+      The node that has just been analyzed.
+   current_node : Node
+      The node that is being analyzed.
+   E : List[(int, int)]
+      Stores the edges.
+   Returns
+   -------
+   None
+   """
+   local_messages = ["restore_one_edge"]
+   if current_node.is_real:
+      if current_node.index != starting_index and\
+         (not (starting_index, current_node.index) in E) and\
+         (not (current_node.index, starting_index) in E):
+         E.append((starting_index, current_node.index))
+   else:
+      index = current_node.neighbors.index(prev_node)
+      next_node = current_node.neighbors[current_node.link_to[index]]
+      restore_one_edge(starting_index, current_node, next_node, E)
+   local_messages.append(END_OF_FUNCTION)
+
+############################  END OF SUBSECTION  ##############################
+###############################  Main Functions  ##############################
+
+# For clarification, the previously used nodes_center is named vertices_center
+# in this method.
+def construct_network3(image_bin, vertices_center, endpoints):
+   """From the binary version of the original image, recognizes all the
+   intersections, and then determines the relation between each intersections
+   and between an intersection and a vertex. In other words, this function
+   constructs a new graph by breaking the original edges at intersections.
+   Parameters
+   ----------
+   image_bin : numpy matrix of integers
+      The binary image of a graph.
+   vertices_center : List[[int, int]]
+      Stores the estimated center coordinates of the vertices.
+   endpoints : List[[int, int]]
+      The ith list in endpoints contains all the pixel coordinates that are the
+      starting points of the edges from the ith vertex.
+   Returns
+   -------
+   nodes_real, nodes_unreal : List[Node]
+      They store the nodes of vertices and nodes of intersections separately.
+   """
+   local_messages = ["construct_network3"]
+   nodes_real = []
+   for i in range(len(vertices_center)):
+      nc = vertices_center[i]
+      node_temp = Node(nc, True, i)
+      nodes_real.append(node_temp)
+   intersections, intersections_9 = find_intersections3(image_bin)
+   nodes_unreal = []
+   for i in range(len(intersections)):
+      nodes_unreal.append(Node(intersections[i], False, -i - 1))
+   for i in range(len(endpoints)):
+      for ep in endpoints[i]:
+         find_path3(image_bin, ep, [], [], endpoints, intersections_9,\
+                     nodes_real, nodes_unreal, nodes_real[i])
+   for i in range(len(intersections)):
+      known = [intersections[i]]
+      n = get_neighborhood(image_bin, intersections[i])
+      nv = get_neighborhood_values(image_bin, intersections[i])
+      for j in range(1, len(n)):
+         if nv[j] == 1:
+            known.append(n[j])
+      for j in range(1, len(n)):
+         if nv[j] == 1:
+            find_path3(image_bin, n[j], [intersections[i], n[j]],\
+                        deepcopy(known), endpoints, intersections_9,\
+                        nodes_real, nodes_unreal, nodes_unreal[i])
+   local_messages.append(END_OF_FUNCTION)
+   return nodes_real, nodes_unreal
+      
+
+def find_path3(image_bin, current_pos, trail, known, endpoints,\
+               intersections_9, nodes_real, nodes_unreal, starting_node):
+   """Attempts to find a path connecting from one node to another. The
+   difference between trail and known is that trail stores pixels that may
+   contribute to the vector evaluation while known only stores the ones that
+   have been explored.
+   Parameters
+   ----------
+   image_bin : numpy matrix of integers
+      The binary image of a graph.
+   current_pos : [int, int]
+      The current position.
+   trail : List[[int, int]]
+      Records the pixels from the start.
+   known : List[[int, int]]
+      Stores all the pixels that have been explored from the start.
+   endpoints : List[[int, int]]
+      The ith list in endpoints contains all the pixel coordinates that are the
+      starting points of the edges from the ith vertex.
+   intersections_9 : List[List[int, int]]
+      Stores the intersections and their 8-neighborhood.
+   nodes_real, nodes_unreal : List[Node]
+      They store the nodes of vertices and nodes of intersections separately.
+   starting_node : Node
+      The starting node.
+   Returns
+   -------
+   None
+      This method records the results in Node objects.
+   """
+   local_messages = ["find_path3"]
+   known.append(current_pos)
+   node_index = -1
+   for m in range(len(endpoints)):
+      if current_pos in endpoints[m]:
+         node_index = m
+   intersection_index = -1
+   for m in range(len(intersections_9)):
+      if current_pos in intersections_9[m] and nodes_unreal[m] != starting_node:
+         intersection_index = m
+   if node_index != -1 and nodes_real[node_index] != starting_node:
+      if not nodes_real[node_index] in starting_node.neighbors:
+         vector_list = get_vector_list(trail)
+         vector_out = get_vector_sum_out(vector_list)
+         starting_node.add_neighbor(nodes_real[node_index], vector_out)
+      if not starting_node in nodes_real[node_index].neighbors:
+         trail_rev = deepcopy(trail)
+         trail_rev.reverse()
+         vector_list = get_vector_list(trail_rev)
+         vector_out = get_vector_sum_out(vector_list)
+         nodes_real[node_index].add_neighbor(starting_node, vector_out)
+   elif intersection_index != -1 and nodes_unreal[intersection_index] != starting_node:
+      if not nodes_unreal[intersection_index] in starting_node.neighbors:
+         vector_list = get_vector_list(trail)
+         vector_out = get_vector_sum_out(vector_list)
+         starting_node.add_neighbor(nodes_unreal[intersection_index], vector_out)
+      if not starting_node in nodes_unreal[intersection_index].neighbors:
+         trail_rev = deepcopy(trail)
+         trail_rev.reverse()
+         vector_list = get_vector_list(trail_rev)
+         vector_out = get_vector_sum_out(vector_list)
+         nodes_unreal[intersection_index].add_neighbor(starting_node, vector_out)
+   else:
+      n = get_neighborhood(image_bin, current_pos)
+      nv = get_neighborhood_values(image_bin, current_pos)
+      for i in range(1, len(n)):
+         if nv[i] == 1 and not n[i] in known:
+            find_path3(image_bin, n[i], trail + [n[i]], known, endpoints,\
+                        intersections_9, nodes_real, nodes_unreal, starting_node)
+   local_messages.append(END_OF_FUNCTION)
+
+def merge_nodes(nodes_real, nodes_unreal, radius, image_bin):
+   """Merges the nodes that are linking together and closed enough to each
+   other.
+   Parameters
+   ----------
+   nodes_real, nodes_unreal : List[Node]
+      They store the nodes of vertices and nodes of intersections separately.
+   radius : float
+      This is used to determined if two nodes are closed to each other enough.
+   image_bin : numpy matrix of integers
+      The binary image of a graph. This is for debugging only.
+   Returns
+   -------
+   next : List[Node]
+      Stores the resulting list of nodes.
+   """
+   local_messages = ["merge_nodes"]
+   local_images = []
+   next = nodes_real + nodes_unreal
+   couples, singles = separate_indices(next, radius)
+   new_index = - len(nodes_unreal) - 1
+   image_display = get_binary_image(image_bin.copy(), 0, 255)
+   for n in next:
+      cv2.circle(image_display, (int(n.location[0]), int(n.location[1])), 5, 255)
+      cv2.putText(image_display, str(n.index), (int(n.location[0] + 2), int(n.location[1]) + 2), cv2.FONT_HERSHEY_SIMPLEX, 0.5, 255,\
+                  1, cv2.LINE_AA, False)
+   local_images.append(image_display.copy())
+   while len(couples) > 0:
+      prev = next
+      next = []
+      for pair in couples:
+         new_node, new_index = merge_2_nodes(prev[pair[0]], prev[pair[1]], new_index)
+         next.append(new_node)  
+      for i in singles:
+         next.append(prev[i])
+      image_display = get_binary_image(image_bin.copy(), 0, 255)
+      for n in next:
+         cv2.circle(image_display, (int(n.location[0]), int(n.location[1])), 5, 255)
+         cv2.putText(image_display, str(n.index), (int(n.location[0] + 2), int(n.location[1]) + 2), cv2.FONT_HERSHEY_SIMPLEX, 0.5, 255,\
+                  1, cv2.LINE_AA, False)
+      local_images.append(image_display.copy())
+      couples, singles = separate_indices(next, radius)
+   for image in local_images:
+      cv2.imshow("image_show", image)
+      cv2.waitKey()
+   
+   local_messages.append(END_OF_FUNCTION)
+   return next
+
+def config_links(nodes):
+   """Determines the relation between the outgoing vectors for each node.
+   Parameters
+   ----------
+   nodes : List[Node]
+      A list of nodes.
+   Returns
+   -------
+   None
+      This function records the results inside the nodes.
+   """
+   local_messages = ["config_links"]
+   for node in nodes:
+      if not node.is_real:
+         local_messages.append("node.outgoings = " + str(node.outgoings))
+         options = []
+         get_pairing_options3([i for i in range(len(node.neighbors))], [], options)
+         local_messages.append("options = " + str(options))
+         best_option = get_best_option3(node.outgoings, options)
+         node.build_links(best_option)
+   local_messages.append(END_OF_FUNCTION)
+
+def restore_graph3(nodes_real, E):
+   """Restores the original graph.
+   Parameters
+   ----------
+   nodes_real : List[Node]
+      Stores the nodes of vertices.
+   E : List[(int, int)]
+      Stores the edges as pairs of vertex indices.
+   Returns
+   -------
+   None
+      This function records the results in E.
+   """
+   local_messages = ["restore_graph3"]
+   for i in range(len(nodes_real)):
+      for next in nodes_real[i].neighbors:
+         restore_one_edge(i, nodes_real[i], next, E)
+   local_messages.append(END_OF_FUNCTION)
+
+
+def present(image_bw, node_list):
+   """Displays the final result of this method. This function is for developer
+   only.
+   Parameters
+   ----------
+   image_bw : numpy matrix of integers
+      The monochrome image that is intended to be hidden for intermediate process.
+   node_list : List[Node]
+      A list of nodes.
+   Returns
+   -------
+   None
+   """
+   for n in node_list:
+      n.show()
+      print("")
+      image_display = image_bw.copy()
+      cv2.putText(image_display, str(n.index), (int(n.location[0] + 2),\
+                  int(n.location[1]) + 2), cv2.FONT_HERSHEY_SIMPLEX, 0.5, 255,\
+                  1, cv2.LINE_AA, False)
+      cv2.circle(image_display, (int(n.location[0]), int(n.location[1])), 5, 255)
+      pos = (n.location[0], n.location[1])
+      vectors = n.outgoings
+      nv = get_neighborhood_values(image_bw, n.location)
+      print("")
+      print("")
+      for nb in n.neighbors:
+         """
+         cv2.putText(image_display, str(nb.index), (int(nb.location[0]) + 2,\
+                        int(nb.location[1]) + 2), cv2.FONT_HERSHEY_SIMPLEX,\
+                        0.4, 255, 1, cv2.LINE_AA, False)
+         """
+         cv2.circle(image_display, (int(nb.location[0]), int(nb.location[1])),\
+                     5, 255)
+      for v in vectors:
+         cv2.arrowedLine(image_display, (int(pos[0]), int(pos[1])),\
+                     (int(np.ceil(pos[0] + 10 * v[0])),\
+                     int(np.ceil(pos[1] + 10 * v[1]))), 255)
+      cv2.imshow("image_display", image_display)
+      cv2.waitKey()
+   print("")
+
+############################  END OF SUBSECTION  ##############################
 #                               End of Section                                #
 ###############################################################################

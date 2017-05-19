@@ -6,7 +6,19 @@ Sha Lai
 This program interacts with the user in console to use the graph_extraction
 program to retrieve a mathematical graph from a digital image.
 
+Copyright 2017 Sha Lai
 
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 '''
 
 from graph_extraction import *
@@ -100,7 +112,8 @@ def select(event, x, y, flags, image):
       image_c = image.copy()
       x_start, y_start = x - int(tW / 2), y - int(tH / 2)
       x_end, y_end = x - int(tW / 2) + tW, y - int(tH / 2) + tH
-      cv2.rectangle(image_c, (x_start, y_start), (x_end, y_end), RECT_COLOR, RECT_THICKNESS)
+      cv2.rectangle(image_c, (x_start, y_start), (x_end, y_end), RECT_COLOR,\
+                     RECT_THICKNESS)
    elif event == cv2.EVENT_LBUTTONDOWN:
       cv2.rectangle(image, (x - int(tW / 2), y - int(tH / 2)),
          (x - int(tW / 2) + tW, y - int(tH / 2) + tH), RECT_COLOR, RECT_THICKNESS)
@@ -117,8 +130,8 @@ def remove(event, x, y, flags, image):
          P = [x, y]
          temp = [0, 0]
          for e in E:
-            A = nodes_center[e[0] - BASE]
-            B = nodes_center[e[1] - BASE]
+            A = nodes_center[e[0]]
+            B = nodes_center[e[1]]
             AP = get_vector(A, P)
             AB = get_vector(A, B)
             AB_unit = np.multiply(AB, 1.0 / two_norm(AB))
@@ -145,7 +158,7 @@ def remove(event, x, y, flags, image):
          for e in E:
             des1 = e[0]
             des2 = e[1]
-            cv2.line(image_c, nodes_center[des1 - BASE], nodes_center[des2 - BASE], (0, 0, 255), 2)
+            cv2.line(image_c, nodes_center[des1], nodes_center[des2], (0, 0, 255), 2)
    elif event == cv2.EVENT_RBUTTONDOWN:
       if len(removed_stack) > 0:
          E.append(removed_stack.pop())
@@ -174,11 +187,11 @@ def add(event, x, y, flags, image):
             if i != i1 and dist < dist_min:
                dist_min = dist
                i2 = i
-         if [i1 + BASE, i2 + BASE] not in E and [i2 + BASE, i1 + BASE] not in E:
+         if [i1, i2] not in E and [i2, i1] not in E:
             cv2.line(image, nodes_center[i1], nodes_center[i2], (0, 0, 255), 2)
             image_stack.append(image_c.copy())
             image_c = image.copy()
-            E.append([i1 + BASE, i2 + BASE])
+            E.append([i1, i2])
             print(len(E))
    elif event == cv2.EVENT_RBUTTONDOWN:
       if len(image_stack) > 0:
@@ -194,6 +207,26 @@ def filter(image_gray, trackbar_name, window_name):
    graph_bin = image_bin2
 
 ############################  END OF SUBSECTION  ##############################
+
+def shift_indices(E, base = BASE):
+   """Shifts each index in an edge (v1, v2) by some value. Originally the
+   indices should be 0-base, but natually people prefer 1-base when they study
+   a graph.
+   Parameters
+   ----------
+   E : List[[int, int]]
+      The edge list.
+   base : int
+      The shift value.
+   Returns
+   -------
+   result : List[[int, int]]
+      The updated edge list.
+   """
+   result = []
+   for e in E:
+      result.append((e[0] + base, e[1] + base))
+   return result
 
 #                               End of Section                                #
 ###############################################################################
@@ -338,6 +371,7 @@ def get_graph_bin(image_gray, trackbar_name, window_name):
    graph_bin = image_gray.copy()
    cv2.imshow(window_name, get_binary_image_inv(image_gray, 0, 255))
    cv2.waitKey(1)
+   graph_bin = get_binary_image_inv(image_gray.copy(), THRESHOLD_INIT, 255)
    cv2.createTrackbar(trackbar_name, window_name, THRESHOLD_INIT, THRESHOLD_MAX,\
                      lambda x: filter(image_gray, trackbar_name, window_name))
    print("Slide for a desired threshold value, and press Return to proceed.")
@@ -514,7 +548,7 @@ def extract_vertices(image_display, image_work, template, tW, tH):
          user_input = ''
    print("Current vertices:")
    print_list(nodes)
-   label_vertices(image_display4, nodes, rel_pos, font_size, font_thickness)
+   label_vertices(image_display4, nodes, rel_pos, font_size, font_thickness, tW, tH)
    cv2.startWindowThread()
    cv2.namedWindow(VERTICES_W_LBL)
    cv2.imshow(VERTICES_W_LBL, image_display4)
@@ -836,8 +870,14 @@ def hide_vertices(image, nodes_center, radius, color = 0):
    for n in nodes_center:
       cv2.circle(image, n, int(radius), color, cv2.FILLED)
       
+######################### Edge Extraction Subsection ##########################
+"""This is the most techincal part of this project. There are multiple versions
+of method to use, however only one should be called in a compiled program.
+Currently method3 is being used, as it is the best one so far. Thre others are
+previous versions.
+"""
 
-def extract_edges(image_work, nodes_center, radius):
+def method1(image_work, nodes_center, radius):
    """This function attempts to extract all the edges from the image with
    vertices being hidden.
    Parameters
@@ -887,7 +927,7 @@ def extract_edges(image_work, nodes_center, radius):
    
    return E
 
-def extract_edges2(image_work, nodes_center, radius):
+def method2(image_work, nodes_center, radius):
    """An alternative way to obtain the edges of a graph.
    Parameters
    ----------
@@ -927,8 +967,9 @@ def extract_edges2(image_work, nodes_center, radius):
    '''
    image_copy = image_work.copy()
    for i in intersections:
-      cv2.putText(image_copy, str(intersections.index(i)), (i[0], i[1]), cv2.FONT_HERSHEY_SIMPLEX,\
-            FONTSIZE_BASE, 255, THICKNESS_BASE, cv2.LINE_AA, False)
+      cv2.putText(image_copy, str(intersections.index(i)), (i[0], i[1]),\
+                  cv2.FONT_HERSHEY_SIMPLEX, FONTSIZE_BASE, 255, THICKNESS_BASE,\
+                  cv2.LINE_AA, False)
    cv2.imshow("image_copy", image_copy)
    cv2.waitKey()
    '''
@@ -945,19 +986,78 @@ def extract_edges2(image_work, nodes_center, radius):
       v2v.append([])
    for i in range(len(endpoints)):
       for ep in endpoints[i]:
-         find_vertices(image_work, endpoints, intersections_skirt_all, v2v, [], ep, i)
+         find_vertices(image_work, endpoints, intersections_skirt_all, v2v, [],\
+                        ep, i)
    result = []
    for i in range(len(endpoints)):
       result.append(viv[i] + v2v[i])
-   for i in range(len(result)):
-      for j in range(len(result[i])):
-         result[i][j] += BASE
    for v1 in range(len(result)):
       for v2 in result[v1]:
-         if not [v1 + BASE, v2] in E and not [v2, v1 + BASE] in E:
-            E.append([v1 + BASE, v2])
-   
+         if not [v1, v2] in E and not [v2, v1] in E:
+            E.append([v1, v2])
    return E
+
+def method3(image_work, nodes_center, radius): # <-- to implement: a feature to adjust the radius coefficient
+   """An alternative way to obtain the edges of a graph.
+   Parameters
+   ----------
+   image_work : numpy matrix of integers
+      The image that is intended to be hidden for intermediate process.
+   endpoints : List[[int, int]]
+      The ith list in endpoints contains all the pixel coordinates that are the
+      starting points of the edges from the ith vertex.
+   nodes_center : List[[int, int]]
+      Stores the estimated center coordinates of the vertices.
+   radius : float
+      Half of the length of the diagonal of the template.
+   Returns
+   -------
+   E : List[(int, int)]
+      Each tuple (a, b) represents an edge connecting vertex a and b.
+   """
+   E = []
+   endpoints = get_endpoints(image_work, nodes_center, radius)
+   nodes_real, nodes_unreal = construct_network3(image_work, nodes_center, endpoints)
+   image_bw = get_binary_image(image_work.copy(), 0, 255)
+   image_bw2 = image_bw.copy()
+   '''
+   for i in range(len(endpoints)):
+      for j in range(len(endpoints[i])):
+         cv2.circle(image_bw2, (endpoints[i][j][0], endpoints[i][j][1]), 5, 255)
+   '''
+   cv2.circle(image_bw2, (nodes_real[4].location[0], nodes_real[4].location[1]), 5, 255)
+   for nb in nodes_real[4].neighbors:
+      cv2.circle(image_bw2, (nb.location[0], nb.location[1]), 5, 255)
+   # cv2.imshow("image_bw2", image_bw2)
+   # cv2.waitKey(1)
+   
+   nodes = merge_nodes(nodes_real, nodes_unreal, radius, image_work)
+   config_links(nodes)
+   restore_graph3(nodes_real, E)
+   return E
+
+def extract_edges(image_work, nodes_center, radius, method = method3):
+   """An alternative way to obtain the edges of a graph.
+   Parameters
+   ----------
+   image_work : numpy matrix of integers
+      The image that is intended to be hidden for intermediate process.
+   endpoints : List[[int, int]]
+      The ith list in endpoints contains all the pixel coordinates that are the
+      starting points of the edges from the ith vertex.
+   nodes_center : List[[int, int]]
+      Stores the estimated center coordinates of the vertices.
+   radius : float
+      Half of the length of the diagonal of the template.
+   Returns
+   -------
+   E : List[(int, int)]
+      Each tuple (a, b) represents an edge connecting vertex a and b.
+   """
+   E = method(image_work, nodes_center, radius, method = method3)
+   return E
+
+############################  END OF SUBSECTION  ##############################
 
 def correct_edges(image_work, E, nodes_center):
    """Allows the user to manually correct the edges.
@@ -981,8 +1081,8 @@ def correct_edges(image_work, E, nodes_center):
    for edge in E:
       des1 = edge[0]
       des2 = edge[1]
-      cv2.line(image_work, nodes_center[des1 - BASE],\
-               nodes_center[des2 - BASE], (0, 0, 255), 2)
+      cv2.line(image_work, nodes_center[des1],\
+               nodes_center[des2], (0, 0, 255), 2)
    response = ""
    while response == "":
       response = input("Do you want to correct the edge(s) manually?(y/n) ")
@@ -994,8 +1094,8 @@ def correct_edges(image_work, E, nodes_center):
             for edge in E:
                des1 = edge[0]
                des2 = edge[1]
-               cv2.line(image_work, nodes_center[des1 - BASE],\
-                        nodes_center[des2 - BASE], (0, 0, 255), 2)
+               cv2.line(image_work, nodes_center[des1],\
+                        nodes_center[des2], (0, 0, 255), 2)
             initiate_UI(image_work, OUTPUT, add, "Add undetected edges in " +
                         "the output window, and hit 'x' when finished.", True)
          elif response[0] != 'n' and response[0] != 'N':
@@ -1003,8 +1103,9 @@ def correct_edges(image_work, E, nodes_center):
             print("Invalis input.")
    deg_seq = [0] * len(nodes_center)
    for e in E:
-      deg_seq[e[0] - BASE] += 1
-      deg_seq[e[1] - BASE] += 1
+      deg_seq[e[0]] += 1
+      deg_seq[e[1]] += 1
+   E = shift_indices(E)
    return E, deg_seq
 
 def output(E, deg_seq):
@@ -1022,7 +1123,9 @@ def output(E, deg_seq):
    print("\"edges\": " + str(E))
    print("\"degrees\": " + str(deg_seq))
    print("Displaying edges....")
-   print_list(E)
+
+#=============================================================================#
+#                             Modes of Execution                              #
 
 def start_regular_mode():
    """Starts the program with regular mode.
@@ -1051,6 +1154,7 @@ def start_regular_mode():
 
    # Process the template.
    template, (tH, tW), radius = process_template(graph2, template_num)
+   print("(tH, tW) = " + str((tH, tW)))
    
    # Find all the vertices. In particular variable nodes stores a list of
    # nodes' upper-right corner.
@@ -1080,20 +1184,16 @@ def start_regular_mode():
 def start_analysis_mode():
    """In this mode, the input will be taken from a previous data source.
    """
-   '''
-   [229, 276]
-[224, 278]
-[223, 277]
-[225, 282]
-   '''
    global E, nodes_center
-   graph = cv2.imread("graph_input/P72A.jpg")
-   graph_work, nodes_center, radius = load("P72A")
+   graph = cv2.imread("graph_input/engine.jpg")
+   graph_work, nodes_center, radius = load("engine")
    
    
    hide_vertices(graph_work, nodes_center, radius)
-   centralize(graph_work)
-   
+   show_binary_image(graph_work, "graph_work")
+   E = method3(graph_work, nodes_center, radius)
+   print("E = " + str(E))
+   print("len(E) = " + str(len(E)))
    '''
    E = extract_edges2(graph_work, nodes_center, radius)
    E, deg_seq = correct_edges(graph.copy(), E, nodes_center)
@@ -1110,11 +1210,10 @@ def start_analysis_mode():
       f.write(line)
    f.close()
    '''
-   
+#                               End of Section                                #
+###############################################################################
 #=============================================================================#
-#                             Under Development                               
-
-
+#                             Under Development                               #
 
 #                               End of Section                                #
 ###############################################################################
@@ -1134,27 +1233,3 @@ if __name__ == "__main__":
          else:
             print("Cannot recognize input.")
             mode = ""
-   
-   
-   
-   
-   
-   
-   # 1130 Th ART338
-   
-   """
-   try hough transform, and some variations of it, eg burn algorithm
-   notes of cse 455
-   
-   try machine learning on crosses first
-   sklearn
-   map equation
-   voting strategy might work
-   """
-   
-   """
-   G = (V, E)
-   V = [1, 2, 3]
-   E = [[1, 2], [2, 3]]
-   
-   """
