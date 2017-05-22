@@ -1661,6 +1661,7 @@ def has_overlap(node1, node2, radius, coefficient = RADIUS_COEFFICIENT):
          get_distance(node1.location, node2.location) < radius * 1.5
    local_messages.append(END_OF_FUNCTION)
 
+# This is called by an old version of merge_node.
 def merge_2_nodes(node1, node2, new_index):
    """Merges two nodes into one: first, create a new node with location at the
    center of the two nodes and determine the correct index of the new node;
@@ -1694,9 +1695,9 @@ def merge_2_nodes(node1, node2, new_index):
       if neighbor != node2:
          result.neighbors.append(neighbor)
          result.outgoings.append(node1.outgoings[i])
-      for j in range(len(neighbor.neighbors)):
-         if neighbor.neighbors[j] == node1:
-            neighbor.neighbors[j] = result
+         for j in range(len(neighbor.neighbors)):
+            if neighbor.neighbors[j] == node1:
+               neighbor.neighbors[j] = result
    local_messages.append("\nAfter processing node1 but before node2")
    for n in node1.neighbors:
       temp += str(n.index) + "  "
@@ -1754,7 +1755,67 @@ def merge_2_nodes(node1, node2, new_index):
    local_messages.append("result(" + str(result.index) + ").neighbors = " + temp)
    local_messages.append(END_OF_FUNCTION)
    return result, new_index
-   
+
+# This is a generalized version of merge_2_nodes.
+def merge_n_nodes(nodes, new_index):
+   """Merges n nodes into one: first, create a new node with location at the
+   center of the nodes and determine the correct index of the new node;
+   then, fill in the new node with neccesary information; at the end, scan the
+   neighbors of the previous nodes and for each of them, redirect the link
+   pointing towards the old node to the new one.
+   Parameters
+   ----------
+   nodes: List[Node]
+      The two nodes to merge.
+   new_index : int
+      The index that may be assigned to the new node.
+   """
+   is_real = False
+   current_index = new_index
+   location = [0, 0]
+   for n in nodes:
+      if n.is_real:
+         is_real = True
+         current_index = n.index
+         break
+      location = [location[0] + n.location[0], location[1] + n.location[1]]
+   if not is_real:
+      new_index -= 1
+   location[0] /= len(nodes)
+   location[1] /= len(nodes)
+   result = Node(location, is_real, current_index)
+   length = len(nodes)
+   popped = []
+   while len(nodes) > 0:
+      node = nodes.pop()
+      for i in range(len(node.neighbors)):
+         nb = node.neighbors[i]
+         if not nb in popped and not nb in nodes and nb != result:
+            if nb in result.neighbors:
+               d1 = sys.maxsize
+               for j in range(len(popped)):
+                  d1 = min(d1, get_distance(nb.location, popped[j].location))
+               d2 = get_distance(nb.location, node.location)
+               if d1 > d2:
+                  result_i = nb.neighbors.index(result)
+                  nb.neighbors = nb.neighbors[0 : result_i] + nb.neighbors[result_i + 1 :]
+                  nb.outgoings = nb.outgoings[0 : result_i] + nb.outgoings[result_i + 1 :]
+                  node_i = nb.neighbors.index(node)
+                  nb.neighbors[node_i] = result
+               else:
+                  node_i = nb.neighbors.index(node)
+                  nb.neighbors = nb.neighbors[0 : node_i] + nb.neighbors[node_i + 1 :]
+                  nb.outgoings = nb.outgoings[0 : node_i] + nb.outgoings[node_i + 1 :]
+            else:
+               result.neighbors.append(nb)
+               result.outgoings.append(node.outgoings[i])
+               for j in range(len(nb.neighbors)):
+                  if nb.neighbors[j] == node:
+                     nb.neighbors[j] = result
+      popped.append(node)
+   return result, new_index
+
+# This is called by an old version of merge_node.
 def separate_indices(nodes_list, radius):
    """Obtains a list of indices of the node pairs pending to merge, together
    with a list of indices of the nodes that should be left untouched.
@@ -1789,6 +1850,7 @@ def separate_indices(nodes_list, radius):
          singles.append(i)
    local_messages.append(END_OF_FUNCTION)
    return couples, singles
+         
 
 def get_pairing_options3(unpaired, current_list, result):
    """Obtains all the pairing options for a given list of elements. This method
@@ -2048,7 +2110,8 @@ def find_path3(image_bin, current_pos, trail, known, endpoints,\
                         intersections_9, nodes_real, nodes_unreal, starting_node)
    local_messages.append(END_OF_FUNCTION)
 
-def merge_nodes(nodes_real, nodes_unreal, radius, image_bin):
+# This is an old version.
+def merge_nodes_old(nodes_real, nodes_unreal, radius, image_bin):
    """Merges the nodes that are linking together and closed enough to each
    other.
    Parameters
@@ -2070,32 +2133,117 @@ def merge_nodes(nodes_real, nodes_unreal, radius, image_bin):
    couples, singles = separate_indices(next, radius)
    new_index = - len(nodes_unreal) - 1
    image_display = get_binary_image(image_bin.copy(), 0, 255)
+   '''
    for n in next:
       cv2.circle(image_display, (int(n.location[0]), int(n.location[1])), 5, 255)
-      cv2.putText(image_display, str(n.index), (int(n.location[0] + 2), int(n.location[1]) + 2), cv2.FONT_HERSHEY_SIMPLEX, 0.5, 255,\
+      cv2.putText(image_display, str(n.index), (int(n.location[0] + 2),\
+                  int(n.location[1]) + 2), cv2.FONT_HERSHEY_SIMPLEX, 0.5, 255,\
                   1, cv2.LINE_AA, False)
    local_images.append(image_display.copy())
+   '''
    while len(couples) > 0:
       prev = next
       next = []
       for pair in couples:
          new_node, new_index = merge_2_nodes(prev[pair[0]], prev[pair[1]], new_index)
+         # new_node, new_index = merge_n_nodes([prev[pair[0]], prev[pair[1]]], new_index)
          next.append(new_node)  
       for i in singles:
          next.append(prev[i])
+      '''
       image_display = get_binary_image(image_bin.copy(), 0, 255)
       for n in next:
          cv2.circle(image_display, (int(n.location[0]), int(n.location[1])), 5, 255)
-         cv2.putText(image_display, str(n.index), (int(n.location[0] + 2), int(n.location[1]) + 2), cv2.FONT_HERSHEY_SIMPLEX, 0.5, 255,\
+         cv2.putText(image_display, str(n.index), (int(n.location[0] + 2),\
+                     int(n.location[1]) + 2), cv2.FONT_HERSHEY_SIMPLEX, 0.5, 255,\
                   1, cv2.LINE_AA, False)
       local_images.append(image_display.copy())
+      '''
       couples, singles = separate_indices(next, radius)
+   '''
    for image in local_images:
       cv2.imshow("image_show", image)
       cv2.waitKey()
-   
+   '''
    local_messages.append(END_OF_FUNCTION)
    return next
+
+def merge_nodes(nodes_real, nodes_unreal, radius, image_bin):
+   """Merges the nodes that are linking together and closed enough to each
+   other.
+   Parameters
+   ----------
+   nodes_real, nodes_unreal : List[Node]
+      They store the nodes of vertices and nodes of intersections separately.
+   radius : float
+      This is used to determined if two nodes are closed to each other enough.
+   image_bin : numpy matrix of integers
+      The binary image of a graph. This is for debugging only.
+   Returns
+   -------
+   result : List[Node]
+      Stores the resulting list of nodes.
+   """
+   local_messages = []
+   nodes = nodes_real + nodes_unreal
+   result = []
+   links = {}
+   for n in nodes_real:
+      links[n.index] = n.index
+      next = []
+      for nb in n.neighbors:
+         if not nb.is_real and has_overlap(n, nb, radius):
+            next.append(nb.index)
+      while len(next) > 0:
+         prev = next
+         next = []
+         for i in prev:
+            links[i] = links[n.index]
+            for nb in nodes_unreal[-i - 1].neighbors:
+               if not nb.is_real and\
+                  has_overlap(nodes_unreal[-i - 1], nb, radius) and\
+                  not nb.index in links:
+                  next.append(nb.index)
+   for n in nodes_unreal:
+      if not n.index in links:
+         links[n.index] = n.index
+         next = []
+         for nb in n.neighbors:
+            if not nb.is_real and has_overlap(n, nb, radius):
+               next.append(nb.index)
+         while len(next) > 0:
+            prev = next
+            next = []
+            for i in prev:
+               links[i] = links[n.index]
+               for nb in nodes_unreal[-i - 1].neighbors:
+                  if not nb.is_real and\
+                  has_overlap(nodes_unreal[-i - 1], nb, radius) and\
+                  not nb.index in links:
+                     next.append(nb.index)
+   local_messages.append(str(links))
+   sets = {}
+   for key in links:
+      if not links[key] in sets:
+         if links[key] >= 0:
+            sets[links[key]] = [nodes_real[key]]
+         else:
+            sets[links[key]] = [nodes_unreal[-key - 1]]
+      else:
+         sets[links[key]].append(nodes_unreal[-key - 1])
+   new_index = -len(nodes_unreal) - 1
+   for i in sets:
+      temp = ""
+      for j in range(len(sets[i])):
+         temp += str(sets[i][j].index) + "  "
+      local_messages.append(str(i) + " : " + temp)
+      if len(sets[i]) > 1:
+         new_node, new_index = merge_n_nodes(sets[i], new_index)
+         result.append(new_node)
+      else:
+         result.append(sets[i][0])
+   local_messages.append(END_OF_FUNCTION)
+   return result
 
 def config_links(nodes):
    """Determines the relation between the outgoing vectors for each node.
@@ -2135,11 +2283,11 @@ def restore_graph3(nodes_real, E):
    local_messages = ["restore_graph3"]
    for i in range(len(nodes_real)):
       for next in nodes_real[i].neighbors:
-         restore_one_edge(i, nodes_real[i], next, E)
+         restore_one_edge(nodes_real[i].index, nodes_real[i], next, E)
    local_messages.append(END_OF_FUNCTION)
 
 
-def present(image_bw, node_list):
+def present(image_bw, node_list, show_image = False):
    """Displays the final result of this method. This function is for developer
    only.
    Parameters
@@ -2148,6 +2296,8 @@ def present(image_bw, node_list):
       The monochrome image that is intended to be hidden for intermediate process.
    node_list : List[Node]
       A list of nodes.
+   show_image : boolean
+      Indicates whether or not to show the image.
    Returns
    -------
    None
@@ -2165,20 +2315,21 @@ def present(image_bw, node_list):
       nv = get_neighborhood_values(image_bw, n.location)
       print("")
       print("")
-      for nb in n.neighbors:
-         """
-         cv2.putText(image_display, str(nb.index), (int(nb.location[0]) + 2,\
-                        int(nb.location[1]) + 2), cv2.FONT_HERSHEY_SIMPLEX,\
-                        0.4, 255, 1, cv2.LINE_AA, False)
-         """
-         cv2.circle(image_display, (int(nb.location[0]), int(nb.location[1])),\
-                     5, 255)
-      for v in vectors:
-         cv2.arrowedLine(image_display, (int(pos[0]), int(pos[1])),\
-                     (int(np.ceil(pos[0] + 10 * v[0])),\
-                     int(np.ceil(pos[1] + 10 * v[1]))), 255)
-      cv2.imshow("image_display", image_display)
-      cv2.waitKey()
+      if show_image:
+         for nb in n.neighbors:
+            """
+            cv2.putText(image_display, str(nb.index), (int(nb.location[0]) + 2,\
+                           int(nb.location[1]) + 2), cv2.FONT_HERSHEY_SIMPLEX,\
+                           0.4, 255, 1, cv2.LINE_AA, False)
+            """
+            cv2.circle(image_display, (int(nb.location[0]), int(nb.location[1])),\
+                        5, 255)
+         for v in vectors:
+            cv2.arrowedLine(image_display, (int(pos[0]), int(pos[1])),\
+                        (int(np.ceil(pos[0] + 10 * v[0])),\
+                        int(np.ceil(pos[1] + 10 * v[1]))), 255)
+         cv2.imshow("image_display", image_display)
+         cv2.waitKey()
    print("")
 
 ############################  END OF SUBSECTION  ##############################

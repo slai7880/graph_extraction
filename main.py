@@ -26,37 +26,6 @@ from common import *
 
 ###############################################################################
 #                               Helper Functions                              #
-
-def get_valid_list(user_input, prompt_sentence, list_length):
-   """Keep asking the user to provide a list of indices until a valid one(can
-      be DONE) is entered.
-   Parameters
-   ----------
-   user_input : string
-      The input from the user.
-   promt_sentence : string
-      A string that is used to ask the user.
-   list_length : int
-      The length of the list that is being processed.
-   """
-   valid = False
-   while valid == False:
-      while user_input == '':
-         user_input = input(prompt_sentence)
-      indices = user_input.split()
-      valid = True
-      if user_input != DONE:
-         for i in indices:
-            if not is_valid_type(i, int, "Invalid input detected!"):
-               valid = False
-               user_input = ''
-            elif int(i) < BASE or int(i) >= BASE + list_length:
-               print("Error: index out of bound!\n")
-               valid = False
-               user_input = ''
-   return user_input
-
-
 def get_kernel_shape(shape_str):
    """Returns the kernel shape constant in OpenCV package.
    Parameters
@@ -87,14 +56,16 @@ def two_norm(vec):
 
 
 ####################### GUI Event Handler Subsection ##########################
+# crop an example of the vertices
 def crop(event, x, y, flags, image):
-   global ix, iy, drawing, cont, image_c, template_num
+   global ix, iy, drawing, cont, image_c, template_num, image_init
    if event == cv2.EVENT_LBUTTONDOWN:
       ix, iy = x, y
       drawing = True
+      image_init = image.copy()
    elif event == cv2.EVENT_MOUSEMOVE:
       if drawing == True:
-         image_c = image.copy()
+         image_c = image_init.copy()
          cv2.rectangle(image_c, (ix, iy), (x, y), RECT_COLOR, RECT_THICKNESS)
    elif event == cv2.EVENT_LBUTTONUP:
       drawing = False
@@ -103,9 +74,56 @@ def crop(event, x, y, flags, image):
       tH = abs(iy - y)
       template_num = ((min(iy, y), min(iy, y) + tH), (min(ix, x), min(ix, x) + tW))
    elif event == cv2.EVENT_RBUTTONUP:
-      cont = False
+      image_c = image_init.copy()
+      template_num = None
 
-      
+# remove false vertices
+def remove_vertices(event, x, y, flags, image):
+   global image_c, nodes, nodes_center, image_original, removed_stack,\
+            image_stack, tW, tH, ref_pos, rel_pos, font_size, font_thickness
+   if event == cv2.EVENT_LBUTTONDOWN:
+      if len(nodes) > 0:
+         indices = []
+         for i in range(len(nodes)):
+            center = nodes_center[i]
+            if x >= center[0] - tW / 2 and x <= center[0] + tW / 2 and\
+               y >= center[1] - tH / 2 and y <= center[1] + tH / 2:
+               indices.append(i)
+         for i in indices:
+            removed_stack.append((nodes[i], nodes_center[i], ref_pos[i], i))
+         temp1 = []
+         temp2 = []
+         temp3 = []
+         for i in range(len(nodes)):
+            if not i in indices:
+               temp1.append(nodes[i])
+               temp2.append(nodes_center[i])
+               temp3.append(ref_pos[i])
+         nodes = temp1
+         nodes_center = temp2
+         ref_pos = temp3
+         '''
+         print("(x, y) = " + str((x, y)))
+         print("Removing e = " + str(result) + "  dist_min = " + str(dist_min))
+         print("temp = " + str(temp))
+         '''
+         image_stack.append(image_c.copy())
+         image_c = image_original.copy()
+         highlight_vertices(image_c, nodes, tW, tH)
+         label_vertices(image_c, ref_pos, rel_pos, font_size, font_thickness)
+   elif event == cv2.EVENT_RBUTTONDOWN:
+      if len(removed_stack) > 0:
+         top = removed_stack.pop()
+         i = top[3]
+         # nodes.append(top[0])
+         nodes = nodes[: i] + top[0] + nodes[i :]
+         # nodes_center.append(top[1])
+         nodes_center = nodes_center[: i] + top[1] + nodes_center[i :]
+         # ref_pos.append(top[2])
+         ref_pos = ref_pos[: i] + top[2] + ref_pos[i :]
+         image_c = image_stack.pop()
+
+# locate the remaining vertices   
 def select(event, x, y, flags, image):
    global cont, image_c, nodes, tW, tH
    if event == cv2.EVENT_MOUSEMOVE:
@@ -120,7 +138,8 @@ def select(event, x, y, flags, image):
       nodes.append((x - int(tW / 2), y - int(tH / 2)))
    elif event == cv2.EVENT_RBUTTONUP:
       cont = False
-      
+
+# remove false edges      
 def remove(event, x, y, flags, image):
    global image_c, E, nodes_center, image_original, removed_stack, image_stack
    if event == cv2.EVENT_LBUTTONDOWN:
@@ -163,7 +182,8 @@ def remove(event, x, y, flags, image):
       if len(removed_stack) > 0:
          E.append(removed_stack.pop())
          image_c = image_stack.pop()
-      
+
+# add undetected edges
 def add(event, x, y, flags, image):
    global image_c, E, nodes_center, image_original, image_stack, start_linking, i1, i2
    if event == cv2.EVENT_LBUTTONDOWN:
@@ -197,7 +217,8 @@ def add(event, x, y, flags, image):
       if len(image_stack) > 0:
          E.pop()
          image_c = image_stack.pop()
-         
+
+# threshold the image in a dynamic way
 def filter(image_gray, trackbar_name, window_name):
    global graph_bin
    break_point = cv2.getTrackbarPos(TRACKBAR_THRESHOLD, window_name)
@@ -322,7 +343,7 @@ def load(filename):
    radius = eval(lines[1])
    return image, nodes_center, radius
 
-def initiate_UI(image, window_name, function, message, key_control = False):
+def initiate_UI(image, window_name, function, message):
    """Makes a certain window interactable for user to perform some task.
    Parameters
    ----------
@@ -334,8 +355,6 @@ def initiate_UI(image, window_name, function, message, key_control = False):
       This should be one of the functions defined in this subsection.
    message : String
       The message displayed to the user.
-   key_control : boolean
-      If true, then the UI stops when the user types in some certain text.
    Returns
    -------
    None
@@ -350,7 +369,7 @@ def initiate_UI(image, window_name, function, message, key_control = False):
    while cont:
       cv2.imshow(window_name, image_c)
       key = cv2.waitKey(1)
-      if key_control and key == ord(CLOSE):
+      if key & 0xFF == 13:
          cont = False
       
 def get_graph_bin(image_gray, trackbar_name, window_name):
@@ -382,67 +401,7 @@ def get_graph_bin(image_gray, trackbar_name, window_name):
    cv2.destroyWindow(window_name)
    return graph_bin
 
-def adjust_labels(image_display, window_name, ref_pos, rel_pos,
-                  font_size = FONTSIZE_BASE * FONTSIZE_INIT,\
-                  font_thickness = THICKNESS_BASE * THICKNESS_INIT):
-   """Allows the user to adjust some font properties on the displaying image.
-   Parameters
-   ----------
-   image_display : numpy matrix of integers
-      The image that will be used to displayed. Note that this must be a copy
-      of the original image possibly with only frames on.
-   window_name : string
-      The name of the displaying window.
-   ref_pos : List[(int, int)]
-      Stores the reference position for text.
-   rel_pos : (int, int)
-      Stores the coordinates relative to each point in ref_pos.
-   font_size : float
-      Stores the font size value.
-   font_thickness : int
-      Stores the font thickness value.
-   Returns
-   -------
-   rel_pos : (int, int)
-      Stores the coordinates relative to each point in ref_pos.
-   font_size : float
-      Stores the font size value.
-   font_thickness : int
-      Stores the font thickness value.
-   """
-   user_input = ''
-   while user_input == '':
-      user_input = input("Do you want to adjust the labels? (y/n) ")
-      if len(user_input) > 0:
-         if user_input[0] == 'y' or user_input[0] == 'Y':
-            print("Slide for a desired label outcome, and press Return to proceed.")
-            image_display_c = image_display.copy()
-            label_vertices(image_display_c, ref_pos, rel_pos, font_size, font_thickness)
-            cv2.imshow(window_name, image_display_c)
-            cv2.waitKey(1)
-            cv2.createTrackbar(TRACKBAR_FONTSIZE, window_name, FONTSIZE_INIT,\
-                                 FONTSIZE_MAX, lambda x: x)
-            cv2.createTrackbar(TRACKBAR_THICKNESS, window_name, THICKNESS_INIT,\
-                                 THICKNESS_MAX, lambda x: x)
-            while (1):
-               font_size = cv2.getTrackbarPos(TRACKBAR_FONTSIZE, window_name) * FONTSIZE_BASE
-               font_thickness = cv2.getTrackbarPos(TRACKBAR_THICKNESS, window_name) * THICKNESS_BASE
-               image_display_c = image_display.copy()
-               label_vertices(image_display_c, ref_pos, rel_pos, font_size, font_thickness)
-               cv2.imshow(window_name, image_display_c)
-               k = cv2.waitKey(1)
-               if k & 0xFF == 13:
-                  break
-               else:
-                  if k == 2490368:
-                     rel_pos = (rel_pos[0], rel_pos[1] - 1)
-                  elif k == 2621440:
-                     rel_pos = (rel_pos[0], rel_pos[1] + 1)
-                  elif k == 2424832:
-                     rel_pos = (rel_pos[0] - 1, rel_pos[1])
-                  elif k == 2555904:
-                     rel_pos = (rel_pos[0] + 1, rel_pos[1])
-   return rel_pos, font_size, font_thickness
+   
 
 def extract_vertices(image_display, image_work, template, tW, tH):
    """Repeatedly asks the user for the amount of undetected vertices in the
@@ -470,7 +429,8 @@ def extract_vertices(image_display, image_work, template, tW, tH):
    font_thickness : int
       Stores the font thickness value.
    """
-   global nodes
+   global nodes, nodes_center, image_original, removed_stack, image_stack,\
+            ref_pos, rel_pos, font_size, font_thickness
    image_display2 = image_display.copy()
    nodes = [] # stores the upper-left coordinates of the vertices
    nodes_center = [] # stores the center coordinates of the vertices
@@ -509,51 +469,62 @@ def extract_vertices(image_display, image_work, template, tW, tH):
    cv2.namedWindow(VERTICES_W_LBL)
    cv2.imshow(VERTICES_W_LBL, image_display3)
    cv2.waitKey(1)
-   rel_pos, font_size, font_thickness = adjust_labels(image_display2.copy(),
-      VERTICES_W_LBL, nodes, rel_pos)
    
-   # attempts to remove all the false vertices
-   user_input = ''
-   while not user_input == DONE:
-      image_display4 = image_display.copy()
-      highlight_vertices(image_display4, nodes, tW, tH)
-      label_vertices(image_display4, nodes, rel_pos, font_size, font_thickness)
-      cv2.startWindowThread()
-      cv2.namedWindow(VERTICES_W_LBL)
-      cv2.imshow(VERTICES_W_LBL, image_display4)
-      cv2.waitKey(1)
-      user_input = ''
-      user_input = get_valid_list(user_input, "Indicate non-vertex elements " +
-                                    "in a sequence of indices, enter " +
-                                    "\"done\" to proceed to the next step:\n",\
-                                    len(nodes))
-      if user_input != DONE:
-         nodes = remove_nodes(user_input, nodes)
-         print("Current vertices:")
-         print_list(nodes)
-         user_input = ''
-   print("Current vertices:")
-   print_list(nodes)
-   user_input = ''
-   while user_input == '':
-      while user_input == '':
-         user_input = input("Do you want to locate the remaining vertices manually? ")
-      if user_input[0] == 'n' or user_input[0] == 'N':
+   # allows the user to adjust the labels and remove vertices
+   nodes_center = get_center_pos(nodes, tW, tH)
+   image_original = image_display.copy()
+   removed_stack = []
+   image_stack = []
+   ref_pos = nodes
+   font_size = FONTSIZE_BASE * FONTSIZE_INIT
+   font_thickness = THICKNESS_BASE * THICKNESS_INIT
+   print("Slide for a desired label outcome, click on a vertex to remove," +\
+         " and press Return to proceed.")
+   image_display_c = image_display.copy()
+   highlight_vertices(image_display_c, nodes, tW, tH)
+   label_vertices(image_display_c, ref_pos, rel_pos, font_size, font_thickness)
+   cv2.imshow(VERTICES_W_LBL, image_display_c)
+   cv2.waitKey(1)
+   cv2.createTrackbar(TRACKBAR_FONTSIZE, VERTICES_W_LBL, FONTSIZE_INIT,\
+                        FONTSIZE_MAX, lambda x: x)
+   cv2.createTrackbar(TRACKBAR_THICKNESS, VERTICES_W_LBL, THICKNESS_INIT,\
+                        THICKNESS_MAX, lambda x: x)
+   cv2.setMouseCallback(VERTICES_W_LBL, remove_vertices, image_display_c)
+   while (1):
+      font_size = cv2.getTrackbarPos(TRACKBAR_FONTSIZE, VERTICES_W_LBL) * FONTSIZE_BASE
+      font_thickness = cv2.getTrackbarPos(TRACKBAR_THICKNESS, VERTICES_W_LBL) * THICKNESS_BASE
+      image_display_c = image_display.copy()
+      highlight_vertices(image_display_c, nodes, tW, tH)
+      label_vertices(image_display_c, ref_pos, rel_pos, font_size, font_thickness)
+      cv2.imshow(VERTICES_W_LBL, image_display_c)
+      k = cv2.waitKey(1)
+      if k & 0xFF == 13:
          break
-      elif user_input[0] == 'y' or user_input[0] == 'Y':
-         cont = True
-         initiate_UI(image_display4, VERTICES_W_LBL, select,\
-            "Please select all the remaining vertices on " + VERTICES_W_LBL)
       else:
-         user_input = ''
+         if k == 2490368: # up
+            rel_pos = (rel_pos[0], rel_pos[1] - 1)
+         elif k == 2621440: # down
+            rel_pos = (rel_pos[0], rel_pos[1] + 1)
+         elif k == 2424832: # left
+            rel_pos = (rel_pos[0] - 1, rel_pos[1])
+         elif k == 2555904: # right
+            rel_pos = (rel_pos[0] + 1, rel_pos[1])
+   
    print("Current vertices:")
    print_list(nodes)
-   label_vertices(image_display4, nodes, rel_pos, font_size, font_thickness, tW, tH)
+   cont = True
+   initiate_UI(image_display_c, VERTICES_W_LBL, select,\
+      "Please select all the remaining vertices on " + VERTICES_W_LBL)
+   cv2.destroyWindow(VERTICES_W_LBL)
+   nodes_center = get_center_pos(nodes, tW, tH)
+   print("Current vertices:")
+   print_list(nodes_center)
+   label_vertices(image_display_c, nodes, rel_pos, font_size, font_thickness, tW, tH)
    cv2.startWindowThread()
    cv2.namedWindow(VERTICES_W_LBL)
-   cv2.imshow(VERTICES_W_LBL, image_display4)
+   cv2.imshow(VERTICES_W_LBL, image_display_c)
    cv2.waitKey(1)
-   return nodes, rel_pos, font_size, font_thickness
+   return nodes, nodes_center, rel_pos, font_size, font_thickness
 
 
 def sort_vertices(nodes, image_display, window_name, rel_pos, font_size, font_thickness):
@@ -1025,15 +996,20 @@ def method3(image_work, nodes_center, radius): # <-- to implement: a feature to 
       for j in range(len(endpoints[i])):
          cv2.circle(image_bw2, (endpoints[i][j][0], endpoints[i][j][1]), 5, 255)
    '''
-   cv2.circle(image_bw2, (nodes_real[4].location[0], nodes_real[4].location[1]), 5, 255)
-   for nb in nodes_real[4].neighbors:
-      cv2.circle(image_bw2, (nb.location[0], nb.location[1]), 5, 255)
-   # cv2.imshow("image_bw2", image_bw2)
-   # cv2.waitKey(1)
-   
+
    nodes = merge_nodes(nodes_real, nodes_unreal, radius, image_work)
+   
+   nodes_real_final = []
+   nodes_unreal_final = []
+   for n in nodes:
+      if n.is_real:
+         nodes_real_final.append(n)
+      else:
+         nodes_unreal_final.append(n)
+   
    config_links(nodes)
-   restore_graph3(nodes_real, E)
+   # present(get_binary_image(image_work.copy(), 0, 255), nodes, True)
+   restore_graph3(nodes_real_final, E)
    return E
 
 def extract_edges(image_work, nodes_center, radius, method = method3):
@@ -1054,7 +1030,7 @@ def extract_edges(image_work, nodes_center, radius, method = method3):
    E : List[(int, int)]
       Each tuple (a, b) represents an edge connecting vertex a and b.
    """
-   E = method(image_work, nodes_center, radius, method = method3)
+   E = method(image_work, nodes_center, radius)
    return E
 
 ############################  END OF SUBSECTION  ##############################
@@ -1089,7 +1065,7 @@ def correct_edges(image_work, E, nodes_center):
       if len(response) > 0:
          if (response[0] == 'y' or response[0] == 'Y'):
             initiate_UI(image_work, OUTPUT, remove, "Remove false edges in " +
-                        "the output window, and hit 'x' when finished.", True)
+                        "the output window, and hit Return when finished.")
             image_work = image_original.copy()
             for edge in E:
                des1 = edge[0]
@@ -1097,7 +1073,7 @@ def correct_edges(image_work, E, nodes_center):
                cv2.line(image_work, nodes_center[des1],\
                         nodes_center[des2], (0, 0, 255), 2)
             initiate_UI(image_work, OUTPUT, add, "Add undetected edges in " +
-                        "the output window, and hit 'x' when finished.", True)
+                        "the output window, and hit Return when finished.")
          elif response[0] != 'n' and response[0] != 'N':
             response = ""
             print("Invalis input.")
@@ -1141,6 +1117,7 @@ def start_regular_mode():
    ix, iy = -1, -1
    drawing = False
    template = None
+   template_num = None
    
    # Obtain a desired binary version of the graph so that the noises can be
    # reduced at the beginning.
@@ -1149,23 +1126,23 @@ def start_regular_mode():
    # Crop an example of the vertices.
    graph_gray2 = get_binary_image(graph_bin, 0, 255)
    graph2 = cv2.cvtColor(graph_gray2, cv2.COLOR_GRAY2BGR)
-   initiate_UI(graph2, GRAPH, crop,\
-      "Please crop an example of the vertices in " + GRAPH + " window.")
+   while template_num is None:
+      cv2.destroyWindow(GRAPH)
+      initiate_UI(graph2, GRAPH, crop,\
+         "Please crop an example of the vertices in " + GRAPH + " window.")
 
    # Process the template.
    template, (tH, tW), radius = process_template(graph2, template_num)
-   print("(tH, tW) = " + str((tH, tW)))
    
    # Find all the vertices. In particular variable nodes stores a list of
    # nodes' upper-right corner.
-   nodes, rel_pos, font_size, font_thickness =\
+   nodes, nodes_center, rel_pos, font_size, font_thickness =\
       extract_vertices(graph.copy(), graph_gray.copy(), template, tW, tH)
    
    # If neccesary, sort the vertices such that the order matches the given one.
    nodes = sort_vertices(nodes, graph.copy(), "Vertices with Labels", rel_pos,
                            font_size, font_thickness)
    
-   nodes_center = get_center_pos(nodes, tW, tH)
 
    # Process the image, then extract all the edges.
    graph_work = noise_reduction(graph_gray2, filename, nodes_center, radius)

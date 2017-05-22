@@ -5,6 +5,20 @@ Sha Lai
 
 This file mostly contains the important constants as well as some shared
 functions. Modify with caution.
+
+Copyright 2017 Sha Lai
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 '''
 ###############################################################################
 #                                  Imports                                    #
@@ -18,13 +32,16 @@ import cv2
 from math import sqrt, inf, fabs, exp, pi, pow
 from scipy.stats import mode
 from datetime import datetime
+from copy import deepcopy
+from invariants import *
+from time import time
 
 #                               End of Section                                #
 ###############################################################################
 ###############################################################################
 #                             Constants Initiation                            #
-sys.stderr = open("stderr.log", 'w')
-sys.stderr.write(str(datetime.now()) + "\n")
+#sys.stderr = open("stderr.log", 'w')
+#sys.stderr.write(str(datetime.now()) + "\n")
 file = open("common.cst")
 for line in file:
    if len(line) > 0 and line[0] != '#':
@@ -145,6 +162,66 @@ def show_binary_image(image_bin, window_name, save = False, break_point = 0,\
    cv2.waitKey(1)
    if save:
       cv2.imwrite(window_name + SUFFIX, image_show)
-      
+
+def toTuples(list):
+    """Converts a list of lists of element pairs to a list of tuples of
+    element pairs.
+    Parameters
+    ----------
+    list : List[[Object, Object]]
+    Returns
+    -------
+    result : List[(Object, Object)]
+    """
+    result = []
+    for c in list:
+        if len(c) > 2 or len(c) < 1:
+            print("Error: " + str(c))
+            sys.exit()
+        result.append((c[0], c[1]))
+    return result
+    
+def toLists(list):
+    """Converts a list of tuples of element pairs to a list of lists of
+    element pairs.
+    Parameters
+    ----------
+    list : List[(Object, Object)]
+    Returns
+    -------
+    result : List[[Object, Object]]
+    """
+    result = []
+    for c in list:
+        if len(c) > 2 or len(c) < 1:
+            print("Error: " + str(c))
+            sys.exit()
+        result.append([c[0], c[1]])
+    return result
+
+def draw_vectors(image_bw, starting_points, vectors):
+   """Draws vectors on a given black and white image.
+   Parameters
+   ----------
+   image_bw : numpy matrix of integers
+      Stores the binary image that are being studied, with contents marked by
+      255s and background marked by 0s.
+   starting_points : List[(float, float)]
+      Stores the starting point of each vector.
+   vectors : List[List[(float, float)]]
+      Stores the vectors at each starting point.
+   Returns
+   -------
+   None
+   """
+   for i in range(len(starting_points)):
+      pos = (int(starting_points[i][0]), int(starting_points[i][1]))
+      cv2.putText(image_bw, str(i), pos, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 255,\
+                  1, cv2.LINE_AA, False)
+      for j in range(len(vectors[i])):
+         cv2.arrowedLine(image_bw, pos,\
+                        (int(np.ceil(pos[0] + 10 * vectors[i][j][0])),\
+                        int(np.ceil(pos[1] + 10 * vectors[i][j][1]))), 255)
+
 #                               End of Section                                #
 ###############################################################################
