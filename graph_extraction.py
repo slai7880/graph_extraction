@@ -1658,7 +1658,7 @@ def has_overlap(node1, node2, radius, coefficient = RADIUS_COEFFICIENT):
    """
    local_messages = ["has_overlap"]
    return node2 in node1.neighbors and\
-         get_distance(node1.location, node2.location) < radius * 1.5
+         get_distance(node1.location, node2.location) < radius
    local_messages.append(END_OF_FUNCTION)
 
 # This is called by an old version of merge_node.

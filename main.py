@@ -227,6 +227,15 @@ def filter(image_gray, trackbar_name, window_name):
    cv2.waitKey(1)
    graph_bin = image_bin2
 
+# set the factor for best result
+def set_rfactor(image_work, trackbar_name, window_name, radius):
+   global nodes, nodes_real, nodes_unreal, endpoints
+   factor = cv2.getTrackbarPos(TRACKBAR_RFACTOR, NODES)
+   nodes_real, nodes_unreal = construct_network3(image_work, nodes_center,\
+                                                   endpoints)
+   nodes = merge_nodes(nodes_real, nodes_unreal, radius * (0.5 + 0.1 * factor),\
+                        image_work)
+
 ############################  END OF SUBSECTION  ##############################
 
 def shift_indices(E, base = BASE):
@@ -968,7 +977,7 @@ def method2(image_work, nodes_center, radius):
             E.append([v1, v2])
    return E
 
-def method3(image_work, nodes_center, radius): # <-- to implement: a feature to adjust the radius coefficient
+def method3(image_work, nodes_center, radius):
    """An alternative way to obtain the edges of a graph.
    Parameters
    ----------
@@ -986,18 +995,31 @@ def method3(image_work, nodes_center, radius): # <-- to implement: a feature to 
    E : List[(int, int)]
       Each tuple (a, b) represents an edge connecting vertex a and b.
    """
+   global nodes, nodes_real, nodes_unreal, endpoints
    E = []
    endpoints = get_endpoints(image_work, nodes_center, radius)
    nodes_real, nodes_unreal = construct_network3(image_work, nodes_center, endpoints)
+   nodes = merge_nodes(nodes_real, nodes_unreal, radius * (0.5 + 0.1 * R_FACTOR_INIT), image_work)
+   
+   print("Slide for a desired value so that all the nodes are correctly " +\
+         "merged, and hit Return when finish.")
    image_bw = get_binary_image(image_work.copy(), 0, 255)
    image_bw2 = image_bw.copy()
-   '''
-   for i in range(len(endpoints)):
-      for j in range(len(endpoints[i])):
-         cv2.circle(image_bw2, (endpoints[i][j][0], endpoints[i][j][1]), 5, 255)
-   '''
-
-   nodes = merge_nodes(nodes_real, nodes_unreal, radius, image_work)
+   for n in nodes:
+      cv2.circle(image_bw2, (int(n.location[0]), int(n.location[1])), 5, 255)
+   cv2.imshow(NODES, image_bw2)
+   cv2.waitKey(1)
+   cv2.createTrackbar(TRACKBAR_RFACTOR, NODES, R_FACTOR_INIT, R_FACTOR_MAX,\
+                        lambda x: set_rfactor(image_work, TRACKBAR_RFACTOR, NODES, radius))
+   while (1):
+      factor = cv2.getTrackbarPos(TRACKBAR_RFACTOR, NODES)
+      image_bw2 = image_bw.copy()
+      for n in nodes:
+         cv2.circle(image_bw2, (int(n.location[0]), int(n.location[1])), 5, 255)
+      cv2.imshow(NODES, image_bw2)
+      k = cv2.waitKey(1)
+      if k & 0xFF == 13:
+         break
    
    nodes_real_final = []
    nodes_unreal_final = []
@@ -1210,3 +1232,8 @@ if __name__ == "__main__":
          else:
             print("Cannot recognize input.")
             mode = ""
+            
+
+'''
+talk to OCR people 
+'''

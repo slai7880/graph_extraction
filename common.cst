@@ -17,6 +17,7 @@ VERTICES = "Vertices"
 VERTICES_W_LBL = "Vertices with Labels"
 OUTPUT = "Output"
 NOISE_REDUCTION = "Noise Reduction"
+NODES = "Nodes"
 
 # The input indicating that the step is complete, only used to test uesr input.
 DONE = 'done'
@@ -105,9 +106,12 @@ TRACKBAR_FONTSIZE = "Size"
 THICKNESS_INIT = 1
 THICKNESS_MAX = 4
 TRACKBAR_THICKNESS = "Thickness"
+R_FACTOR_INIT = 10
+R_FACTOR_MAX = 20
+TRACKBAR_RFACTOR = "Factor"
 
 # This is used in method3 to group the nodes.
-RADIUS_COEFFICIENT = 1.5
+RADIUS_COEFFICIENT = 2
 
 # End of log recording.
 END_OF_FUNCTION = "\n============ eof ============\n"
