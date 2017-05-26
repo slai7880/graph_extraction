@@ -223,5 +223,11 @@ def draw_vectors(image_bw, starting_points, vectors):
                         (int(np.ceil(pos[0] + 10 * vectors[i][j][0])),\
                         int(np.ceil(pos[1] + 10 * vectors[i][j][1]))), 255)
 
+
+def two_norm(vec):
+   """Just a simplified funciton to compute 2-norm.
+   """
+   return np.linalg.norm(vec, 2)
+
 #                               End of Section                                #
 ###############################################################################

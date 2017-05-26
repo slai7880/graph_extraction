@@ -1770,10 +1770,13 @@ def merge_n_nodes(nodes, new_index):
    new_index : int
       The index that may be assigned to the new node.
    """
+   local_messages = ["merge_n_nodes"]
    is_real = False
    current_index = new_index
    location = [0, 0]
+   index_list = ""
    for n in nodes:
+      index_list += str(n.index) + "  "
       if n.is_real:
          is_real = True
          current_index = n.index
@@ -1784,6 +1787,10 @@ def merge_n_nodes(nodes, new_index):
    location[0] /= len(nodes)
    location[1] /= len(nodes)
    result = Node(location, is_real, current_index)
+   local_messages.append("Created new Node at location = " + str(location) +\
+                           "  is_real = " + str(is_real) + "  index = " +\
+                           str(current_index))
+   local_messages.append("Base: " + index_list)
    length = len(nodes)
    popped = []
    while len(nodes) > 0:
@@ -1813,6 +1820,12 @@ def merge_n_nodes(nodes, new_index):
                   if nb.neighbors[j] == node:
                      nb.neighbors[j] = result
       popped.append(node)
+   index_list = ""
+   for nb in result.neighbors:
+      index_list += str(nb.index) + "  "
+   local_messages.append("Neighbors: " + index_list)
+   local_messages.append(END_OF_FUNCTION)
+   print_list(local_messages)
    return result, new_index
 
 # This is called by an old version of merge_node.
@@ -1929,9 +1942,20 @@ def is_intersection3(image_bin, current_pos):
    for i in range(1, len(n)):
       if nv[i] == 1:
          count += 1
-         vec_sum = np.add(vec_sum, get_vector(n[0], n[i]))
+         next_vec = get_vector(n[0], n[i])
+         temp = two_norm(next_vec)
+         next_vec = np.multiply(next_vec, 1 / temp)
+         vec_sum = np.add(vec_sum, next_vec)
+         temp = two_norm(vec_sum)
+         if temp != 0:
+            vec_sum = np.multiply(vec_sum, 1 / temp)
    local_messages.append(END_OF_FUNCTION)
-   return count > 2 and (vec_sum[0] != 0 or vec_sum[1] != 0)
+   if count > 2:
+      print("vec_sum = " + str(vec_sum))
+      print_neighborhood_values(nv)
+      print("")
+   # return count > 2 and vec_sum[0] == 0 and vec_sum[1] == 0
+   return count > 2
 
 def find_intersections3(image_bin):
    """Finds all the intersections in the image.
@@ -1952,9 +1976,16 @@ def find_intersections3(image_bin):
    for y in range(image_bin.shape[0]):
       for x in range(image_bin.shape[1]):
          if image_bin[y, x] == 1 and is_intersection3(image_bin, [x, y]):
+            nv = get_neighborhood_values(image_bin, [x, y])
+            local_messages.append(str(-len(intersections) - 1))
+            local_messages.append(str(nv[8]) + " " + str(nv[1]) + " " + str(nv[2]))
+            local_messages.append(str(nv[7]) + " " + str(nv[0]) + " " + str(nv[3]))
+            local_messages.append(str(nv[6]) + " " + str(nv[5]) + " " + str(nv[4]))
+            local_messages.append("")
             intersections.append([x, y])
             intersections_9.append(get_neighborhood(image_bin, [x, y]))
    local_messages.append(END_OF_FUNCTION)
+   
    return intersections, intersections_9
 
 def restore_one_edge(starting_index, prev_node, current_node, E):
@@ -2238,11 +2269,18 @@ def merge_nodes(nodes_real, nodes_unreal, radius, image_bin):
          temp += str(sets[i][j].index) + "  "
       local_messages.append(str(i) + " : " + temp)
       if len(sets[i]) > 1:
+         print("i = " + str(i) + "    new_index = " + str(new_index))
          new_node, new_index = merge_n_nodes(sets[i], new_index)
+         
          result.append(new_node)
       else:
          result.append(sets[i][0])
+   image_bw = get_binary_image(image_bin, 0, 255)
+   circle(image_bw, result)
+   cv2.imshow("image_bw", image_bw)
+   cv2.waitKey(1)
    local_messages.append(END_OF_FUNCTION)
+   print_list(local_messages)
    return result
 
 def config_links(nodes):
@@ -2286,6 +2324,27 @@ def restore_graph3(nodes_real, E):
          restore_one_edge(nodes_real[i].index, nodes_real[i], next, E)
    local_messages.append(END_OF_FUNCTION)
 
+
+############################  END OF SUBSECTION  ##############################
+############################  Debugging Functions  ############################
+
+def circle(image_bw, nodes):
+   """Highlights the nodes in an image.
+   Parameters
+   ----------
+   image_bw : numpy matrix of integers
+      The monochrome image that is intended to be hidden for intermediate process.
+   nodes : List[Node]
+      A list of nodes
+   Returns
+   -------
+   None
+   """
+   for n in nodes:
+      cv2.circle(image_bw, (int(n.location[0]), int(n.location[1])), 5, 255)
+      cv2.putText(image_bw, str(n.index), (int(n.location[0] + 2),\
+                  int(n.location[1]) + 2), cv2.FONT_HERSHEY_SIMPLEX, 0.5, 255,\
+                  1, cv2.LINE_AA, False)
 
 def present(image_bw, node_list, show_image = False):
    """Displays the final result of this method. This function is for developer

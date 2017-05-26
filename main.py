@@ -48,10 +48,7 @@ def get_kernel_shape(shape_str):
 
 
 
-def two_norm(vec):
-   """Just a simplified funciton to compute 2-norm.
-   """
-   return np.linalg.norm(vec, 2)
+
 
 
 
@@ -1176,7 +1173,16 @@ def start_regular_mode():
    cv2.waitKey()
    '''
    E = extract_edges(graph_work, nodes_center, radius)
-   E, deg_seq = correct_edges(graph.copy(), E, nodes_center)
+   print("E = " + str(E))
+   graph_display = graph.copy();
+   for edge in E:
+      des1 = edge[0]
+      des2 = edge[1]
+      cv2.line(graph_display, nodes_center[des1],\
+               nodes_center[des2], (0, 0, 255), 2)
+   cv2.imshow(OUTPUT, graph_display)
+   cv2.waitKey(1)
+   E, deg_seq = correct_edges(graph.copy(), toLists(E), nodes_center)
    output(E, deg_seq)
    get_invariants(E, len(deg_seq))
    
@@ -1189,6 +1195,11 @@ def start_analysis_mode():
    
    
    hide_vertices(graph_work, nodes_center, radius)
+   for i in range(len(nodes_center)):
+      n = nodes_center[i]
+      cv2.putText(graph_work, str(i), (int(n[0] + 2),\
+                  int(n[1]) + 2), cv2.FONT_HERSHEY_SIMPLEX, 0.5, 255,\
+                  1, cv2.LINE_AA, False)
    show_binary_image(graph_work, "graph_work")
    E = method3(graph_work, nodes_center, radius)
    print("E = " + str(E))
