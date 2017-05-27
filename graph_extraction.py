@@ -879,20 +879,13 @@ def get_endpoints(image_bin, nodes_center, radius):
                if nv[i] == 1:
                   count += 1
             if count == 1:
+               d = radius * 2
+               target = 0
                for i in range(len(nodes_center)):
-                  d = get_distance((x, y), nodes_center[i])
-                  if d < radius * 1.5:
-                     new_end = True
-                     endpoints_icopy = endpoints[i][:]
-                     for ep in endpoints_icopy:
-                        n = get_neighborhood(image_bin, ep)
-                        if [x, y] in n:
-                           new_end = False
-                           if d < get_distance(ep, nodes_center[i]):
-                              endpoints[i].remove(ep)
-                              endpoints[i].append([x, y])
-                     if new_end:      
-                        endpoints[i].append([x, y])
+                  if get_distance((x, y), nodes_center[i]) < d:
+                     d = get_distance((x, y), nodes_center[i])
+                     target = i
+               endpoints[target].append([x, y])
    return endpoints
 
 #=============================================================================#
@@ -1825,7 +1818,7 @@ def merge_n_nodes(nodes, new_index):
       index_list += str(nb.index) + "  "
    local_messages.append("Neighbors: " + index_list)
    local_messages.append(END_OF_FUNCTION)
-   print_list(local_messages)
+   # print_list(local_messages)
    return result, new_index
 
 # This is called by an old version of merge_node.
@@ -1937,25 +1930,22 @@ def is_intersection3(image_bin, current_pos):
    local_messages = ["is_intersection3"]
    n = get_neighborhood(image_bin, current_pos)
    nv = get_neighborhood_values(image_bin, current_pos)
-   count = 0
-   vec_sum = [0, 0]
+   vectors = []
    for i in range(1, len(n)):
       if nv[i] == 1:
-         count += 1
-         next_vec = get_vector(n[0], n[i])
-         temp = two_norm(next_vec)
-         next_vec = np.multiply(next_vec, 1 / temp)
-         vec_sum = np.add(vec_sum, next_vec)
-         temp = two_norm(vec_sum)
-         if temp != 0:
-            vec_sum = np.multiply(vec_sum, 1 / temp)
-   local_messages.append(END_OF_FUNCTION)
-   if count > 2:
-      print("vec_sum = " + str(vec_sum))
-      print_neighborhood_values(nv)
-      print("")
-   # return count > 2 and vec_sum[0] == 0 and vec_sum[1] == 0
-   return count > 2
+         vectors.append(get_vector(n[0], n[i]))
+   local_messages.append("vectors = " + str(vectors))
+   if len(vectors) > 2:
+      products = [np.inner(vectors[0], vectors[1]),\
+                  np.inner(vectors[1], vectors[2]),\
+                  np.inner(vectors[0], vectors[2])]
+      local_messages.append("products = " + str(products))
+      local_messages.append(END_OF_FUNCTION)
+      return products[0] == products[1] or products[0] == products[2] or\
+               products[1] == products[2]
+   else:
+      local_messages.append(END_OF_FUNCTION)
+      return False
 
 def find_intersections3(image_bin):
    """Finds all the intersections in the image.
@@ -2215,7 +2205,7 @@ def merge_nodes(nodes_real, nodes_unreal, radius, image_bin):
    result : List[Node]
       Stores the resulting list of nodes.
    """
-   local_messages = []
+   local_messages = ["merge_nodes"]
    nodes = nodes_real + nodes_unreal
    result = []
    links = {}
@@ -2252,7 +2242,7 @@ def merge_nodes(nodes_real, nodes_unreal, radius, image_bin):
                   has_overlap(nodes_unreal[-i - 1], nb, radius) and\
                   not nb.index in links:
                      next.append(nb.index)
-   local_messages.append(str(links))
+   local_messages.append("links = " + str(links))
    sets = {}
    for key in links:
       if not links[key] in sets:
@@ -2263,15 +2253,14 @@ def merge_nodes(nodes_real, nodes_unreal, radius, image_bin):
       else:
          sets[links[key]].append(nodes_unreal[-key - 1])
    new_index = -len(nodes_unreal) - 1
+   local_messages.append("Recording sets:")
    for i in sets:
       temp = ""
       for j in range(len(sets[i])):
          temp += str(sets[i][j].index) + "  "
       local_messages.append(str(i) + " : " + temp)
       if len(sets[i]) > 1:
-         print("i = " + str(i) + "    new_index = " + str(new_index))
          new_node, new_index = merge_n_nodes(sets[i], new_index)
-         
          result.append(new_node)
       else:
          result.append(sets[i][0])
@@ -2280,7 +2269,7 @@ def merge_nodes(nodes_real, nodes_unreal, radius, image_bin):
    cv2.imshow("image_bw", image_bw)
    cv2.waitKey(1)
    local_messages.append(END_OF_FUNCTION)
-   print_list(local_messages)
+   # print_list(local_messages)
    return result
 
 def config_links(nodes):

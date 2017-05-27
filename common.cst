@@ -114,4 +114,4 @@ TRACKBAR_RFACTOR = "Factor"
 RADIUS_COEFFICIENT = 2
 
 # End of log recording.
-END_OF_FUNCTION = "\n============ eof ============\n"
+END_OF_FUNCTION = "============ eof ============"

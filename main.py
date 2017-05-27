@@ -928,8 +928,9 @@ def method2(image_work, nodes_center, radius):
    endpoints = get_endpoints(image_work, nodes_center, radius)
    image_work2 = get_binary_image(image_work.copy(), 0, 255)
    for i in range(len(nodes_center)):
-      cv2.putText(image_work2, str(i + BASE), nodes_center[i], cv2.FONT_HERSHEY_SIMPLEX,\
-            FONTSIZE_BASE, 255, THICKNESS_BASE, cv2.LINE_AA, False)
+      cv2.putText(image_work2, str(i + BASE), nodes_center[i],\
+                  cv2.FONT_HERSHEY_SIMPLEX, FONTSIZE_BASE, 255, THICKNESS_BASE,\
+                  cv2.LINE_AA, False)
    cv2.imshow("image_work2", image_work2)
    cv2.waitKey(1)
    deg_seq = []
@@ -993,10 +994,17 @@ def method3(image_work, nodes_center, radius):
       Each tuple (a, b) represents an edge connecting vertex a and b.
    """
    global nodes, nodes_real, nodes_unreal, endpoints
+   local_messages = ["method3"]
    E = []
    endpoints = get_endpoints(image_work, nodes_center, radius)
-   nodes_real, nodes_unreal = construct_network3(image_work, nodes_center, endpoints)
-   nodes = merge_nodes(nodes_real, nodes_unreal, radius * (0.5 + 0.1 * R_FACTOR_INIT), image_work)
+   temp = []
+   for i in range(len(endpoints)):
+      temp.append(len(endpoints[i]))
+   local_messages.append("lengths of endpoints: " + str(temp))
+   nodes_real, nodes_unreal = construct_network3(image_work, nodes_center,\
+                                                   endpoints)
+   nodes = merge_nodes(nodes_real, nodes_unreal,\
+                        radius * (0.5 + 0.1 * R_FACTOR_INIT), image_work)
    
    print("Slide for a desired value so that all the nodes are correctly " +\
          "merged, and hit Return when finish.")
@@ -1007,7 +1015,8 @@ def method3(image_work, nodes_center, radius):
    cv2.imshow(NODES, image_bw2)
    cv2.waitKey(1)
    cv2.createTrackbar(TRACKBAR_RFACTOR, NODES, R_FACTOR_INIT, R_FACTOR_MAX,\
-                        lambda x: set_rfactor(image_work, TRACKBAR_RFACTOR, NODES, radius))
+                        lambda x: set_rfactor(image_work, TRACKBAR_RFACTOR,\
+                        NODES, radius))
    while (1):
       factor = cv2.getTrackbarPos(TRACKBAR_RFACTOR, NODES)
       image_bw2 = image_bw.copy()
@@ -1029,6 +1038,8 @@ def method3(image_work, nodes_center, radius):
    config_links(nodes)
    # present(get_binary_image(image_work.copy(), 0, 255), nodes, True)
    restore_graph3(nodes_real_final, E)
+   local_messages.append(END_OF_FUNCTION)
+   print_list(local_messages)
    return E
 
 def extract_edges(image_work, nodes_center, radius, method = method3):
