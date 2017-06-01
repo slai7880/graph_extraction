@@ -209,7 +209,6 @@ def add(event, x, y, flags, image):
             image_stack.append(image_c.copy())
             image_c = image.copy()
             E.append([i1, i2])
-            print(len(E))
    elif event == cv2.EVENT_RBUTTONDOWN:
       if len(image_stack) > 0:
          E.pop()
@@ -252,7 +251,7 @@ def shift_indices(E, base = BASE):
    """
    result = []
    for e in E:
-      result.append((e[0] + base, e[1] + base))
+      result.append([e[0] + base, e[1] + base])
    return result
 
 #                               End of Section                                #
@@ -1025,6 +1024,7 @@ def method3(image_work, nodes_center, radius):
       cv2.imshow(NODES, image_bw2)
       k = cv2.waitKey(1)
       if k & 0xFF == 13:
+         cv2.destroyWindow(NODES)
          break
    
    nodes_real_final = []
@@ -1039,7 +1039,6 @@ def method3(image_work, nodes_center, radius):
    # present(get_binary_image(image_work.copy(), 0, 255), nodes, True)
    restore_graph3(nodes_real_final, E)
    local_messages.append(END_OF_FUNCTION)
-   print_list(local_messages)
    return E
 
 def extract_edges(image_work, nodes_center, radius, method = method3):
@@ -1065,21 +1064,21 @@ def extract_edges(image_work, nodes_center, radius, method = method3):
 
 ############################  END OF SUBSECTION  ##############################
 
-def correct_edges(image_work, E, nodes_center):
+def correct_edges(image_work, nodes_center):
    """Allows the user to manually correct the edges.
    Parameters
    ----------
    image_work : numpy matrix of integers
       The image that is being studied.
-   E : List[[int, int]]
-      The edge list.
    nodes_center : List[[int, int]]
       Stores the estimated center coordinates of the vertices.
    Returns
    -------
+   deg_seq : List[int]
+      The degree sequence.
    None
    """
-   global image_original, cont, removed_stack, image_stack, start_linking
+   global image_original, cont, removed_stack, image_stack, start_linking, E
    image_original = image_work.copy()
    removed_stack = []
    image_stack = []
@@ -1094,6 +1093,7 @@ def correct_edges(image_work, E, nodes_center):
       response = input("Do you want to correct the edge(s) manually?(y/n) ")
       if len(response) > 0:
          if (response[0] == 'y' or response[0] == 'Y'):
+            print(len(E))
             initiate_UI(image_work, OUTPUT, remove, "Remove false edges in " +
                         "the output window, and hit Return when finished.")
             image_work = image_original.copy()
@@ -1112,9 +1112,9 @@ def correct_edges(image_work, E, nodes_center):
       deg_seq[e[0]] += 1
       deg_seq[e[1]] += 1
    E = shift_indices(E)
-   return E, deg_seq
+   return deg_seq
 
-def output(E, deg_seq):
+def output(E, deg_seq, invariants):
    """Shows all the edges.
    Parameters
    ----------
@@ -1124,11 +1124,25 @@ def output(E, deg_seq):
    -------
    None
    """
+   output = open(OUTPUT_FILE, 'a')
+   output.write("========" + str(datetime.now()) + "========\n")
    print("Printing outputs....")
-   print("\"vertices\": " + str([i for i in range(BASE, len(deg_seq) + BASE)]))
-   print("\"edges\": " + str(E))
-   print("\"degrees\": " + str(deg_seq))
-   print("Displaying edges....")
+   print("vertex amount: " + str(len(deg_seq)))
+   output.write("vertex amount: " + str(len(deg_seq)) + "\n")
+   print("edges: " + str(E))
+   output.write("edges: " + str(E) + "\n")
+   print("degrees: " + str(deg_seq))
+   output.write("degrees: " + str(deg_seq) + "\n")
+   for key in invariants:
+      print(key + invariants[key])
+      output.write(key + invariants[key] + "\n")
+   temp = ""
+   for i in range(len(str(datetime.now()))):
+      temp += "="
+   output.write("========" + temp + "========\n")
+   output.write("\n")
+   output.close()
+   print("The results can also be found in the output directory.")
 
 #=============================================================================#
 #                             Modes of Execution                              #
@@ -1184,7 +1198,7 @@ def start_regular_mode():
    cv2.waitKey()
    '''
    E = extract_edges(graph_work, nodes_center, radius)
-   print("E = " + str(E))
+   E = toLists(E)
    graph_display = graph.copy();
    for edge in E:
       des1 = edge[0]
@@ -1193,9 +1207,10 @@ def start_regular_mode():
                nodes_center[des2], (0, 0, 255), 2)
    cv2.imshow(OUTPUT, graph_display)
    cv2.waitKey(1)
-   E, deg_seq = correct_edges(graph.copy(), toLists(E), nodes_center)
-   output(E, deg_seq)
-   get_invariants(E, len(deg_seq))
+   deg_seq = correct_edges(graph.copy(), nodes_center)
+   invariants = get_invariants(E, len(deg_seq))
+   output(E, deg_seq, invariants)
+   temp = input("Press any key to exit.")
    
 def start_analysis_mode():
    """In this mode, the input will be taken from a previous data source.
@@ -1241,6 +1256,9 @@ def start_analysis_mode():
 ###############################################################################
 #                              Executing Codes                                #
 if __name__ == "__main__":
+   start_regular_mode()
+   
+   '''
    mode = ""
    while mode == "":
       mode = input("Start regular mode? (y/n) ")
@@ -1254,8 +1272,4 @@ if __name__ == "__main__":
          else:
             print("Cannot recognize input.")
             mode = ""
-            
-
-'''
-talk to OCR people 
-'''
+   '''

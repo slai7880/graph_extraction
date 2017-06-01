@@ -4,10 +4,11 @@
 # Modify at your risk.
 # Lines starting with # will be ignored when this file is being read.
 
-# Default directories of the input files.
+# Default directories of the input/output files.
 GRAPH_PATH = 'graph_input' + str(sep)
 TEMPLATE_PATH = 'vertex_example' + str(sep)
 DATA_PATH = 'data_input' + str(sep)
+OUTPUT_FILE = 'output' + str(sep) + 'output.txt'
 
 
 # Some default window names.

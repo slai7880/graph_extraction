@@ -283,32 +283,41 @@ def get_invariants(edge_list, vertex_amount):
     -------
     None
     """
+    results = {}
     endpoints = get_endpoints_from_edges(edge_list, vertex_amount)
     start = time()
     adj_mat = get_adj_mat(edge_list, vertex_amount)
     completeness = is_complete(adj_mat)
     connectivity = is_connected(adj_mat, vertex_amount)
     end = time()
-    print("Connected? " + str(connectivity))
+    if connectivity:
+      # print("Connectivity: connected")
+      results["Connectivity :"] = "connected"
+    else:
+      # print("Connectivity: disconnected")
+      results["Connectivity :"] = "disconnected"
     #print("Time used to determine connectivity = " + str(end - start) + " sec\n")
     
     start = time()
     char_poly = np.poly(adj_mat)
     end = time()
-    print("Characteristic Polynomial Coefficients: " + str(char_poly))
+    # print("Characteristic Polynomial Coefficients: " + str(char_poly))
+    results["Characteristic Polynomial Coefficients: "] = str(char_poly)
     #print("Time used to determine characteristic polynomial = " + str(end - start) + " sec\n")
     
     
     start = time()
     chrom_poly = get_chrom_poly(edge_list, vertex_amount, vertex_amount)
     end = time()
-    print("Chromatic Polynomial Coefficients: " + str(chrom_poly))
+    # print("Chromatic Polynomial Coefficients: " + str(chrom_poly))
+    results["Chromatic Polynomial Coefficients: "] = str(chrom_poly)
     #print("Time used to determine chromatic polynomial = " + str(end - start) + " sec\n")
     
     start = time()
     chrom_num = get_chrom_num(chrom_poly)
     end = time()
-    print("Chromatic Number: " + str(chrom_num))
+    # print("Chromatic Number: " + str(chrom_num))
+    results["Chromatic Number: "] = str(chrom_num)
     #print("Time used to determine chromatic number = " + str(end - start) + " sec\n")
     
     
@@ -316,7 +325,8 @@ def get_invariants(edge_list, vertex_amount):
     maximal_cliques = []
     BronKerbosch2(set(), {(i + BASE) for i in range(vertex_amount)}, set(), maximal_cliques, endpoints)
     end = time()
-    print("Maximal Cliques: " + str(maximal_cliques))
+    # print("Maximal Cliques: " + str(maximal_cliques))
+    results["Maximal Cliques: "] = str(maximal_cliques)
     #print("Time used to determine cliques = " + str(end - start) + " sec\n")
     
     '''
@@ -326,6 +336,7 @@ def get_invariants(edge_list, vertex_amount):
     print("Chromatic Number: " + str(chrom_num))
     print("Maximal Cliques: " + str(maximal_cliques))
     '''
+    return results
 
 #                               End of Section                                #
 ###############################################################################
