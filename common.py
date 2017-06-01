@@ -40,8 +40,8 @@ from time import time
 ###############################################################################
 ###############################################################################
 #                             Constants Initiation                            #
-#sys.stderr = open("stderr.log", 'w')
-#sys.stderr.write(str(datetime.now()) + "\n")
+# sys.stderr = open("stderr.log", 'w')
+# sys.stderr.write(str(datetime.now()) + "\n")
 file = open("common.cst")
 for line in file:
    if len(line) > 0 and line[0] != '#':
