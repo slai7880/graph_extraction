@@ -436,6 +436,21 @@ def thin(image_bin):
    mat = image_bin.copy()
    if mat.shape[0] < 3 or mat.shape[1] < 3:
       sys.exit("Invalid image input: " + str(mat.shape))
+   for y in range(mat.shape[0]):
+      for x in range(mat.shape[1]):
+         n = get_neighborhood(mat, [x, y])
+         nv = get_neighborhood_values(mat, [x, y])
+         count = [0, 0]
+         for i in range(1, len(nv)):
+            if nv[i] == 1:
+               count[0] += 1
+            elif nv[i] == 0:
+               count[1] += 1
+         if count[0] >= 7:
+            mat[y, x] = 1
+         elif count[1] >= 7:
+            mat[y, x] = 0
+   
    keep_itr = True
    while keep_itr:
       output1 = examine(mat, test1)
@@ -2264,10 +2279,12 @@ def merge_nodes(nodes_real, nodes_unreal, radius, image_bin):
          result.append(new_node)
       else:
          result.append(sets[i][0])
+   '''
    image_bw = get_binary_image(image_bin, 0, 255)
    circle(image_bw, result)
    cv2.imshow("image_bw", image_bw)
    cv2.waitKey(1)
+   '''
    local_messages.append(END_OF_FUNCTION)
    # print_list(local_messages)
    return result

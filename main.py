@@ -176,7 +176,7 @@ def remove(event, x, y, flags, image):
             des2 = e[1]
             cv2.line(image_c, nodes_center[des1], nodes_center[des2], (0, 0, 255), 2)
    elif event == cv2.EVENT_RBUTTONDOWN:
-      if len(removed_stack) > 0:
+      if len(removed_stack) > 1:
          E.append(removed_stack.pop())
          image_c = image_stack.pop()
 
@@ -193,7 +193,7 @@ def add(event, x, y, flags, image):
             i1 = i
    elif event == cv2.EVENT_MOUSEMOVE:
       if start_linking:
-         image_c = image.copy()
+         image_c = image_stack[-1].copy()
          cv2.line(image_c, nodes_center[i1], (x, y), (0, 0, 255), 2)
    elif event == cv2.EVENT_LBUTTONUP:
       if start_linking:
@@ -205,14 +205,15 @@ def add(event, x, y, flags, image):
                dist_min = dist
                i2 = i
          if [i1, i2] not in E and [i2, i1] not in E:
-            cv2.line(image, nodes_center[i1], nodes_center[i2], (0, 0, 255), 2)
+            image_c = image_stack[-1].copy()
+            cv2.line(image_c, nodes_center[i1], nodes_center[i2], (0, 0, 255), 2)
             image_stack.append(image_c.copy())
-            image_c = image.copy()
             E.append([i1, i2])
    elif event == cv2.EVENT_RBUTTONDOWN:
-      if len(image_stack) > 0:
+      if len(image_stack) > 1:
          E.pop()
-         image_c = image_stack.pop()
+         image_stack.pop()
+         image_c = image_stack[-1].copy()
 
 # threshold the image in a dynamic way
 def filter(image_gray, trackbar_name, window_name):
@@ -398,7 +399,7 @@ def get_graph_bin(image_gray, trackbar_name, window_name):
    graph_bin = get_binary_image_inv(image_gray.copy(), THRESHOLD_INIT, 255)
    cv2.createTrackbar(trackbar_name, window_name, THRESHOLD_INIT, THRESHOLD_MAX,\
                      lambda x: filter(image_gray, trackbar_name, window_name))
-   print("Slide for a desired threshold value, and press Return to proceed.")
+   print("Slide for a desired threshold value, and press Enter to proceed.")
    while (1):
       k = cv2.waitKey(1) & 0xFF
       if k == 13:
@@ -484,7 +485,7 @@ def extract_vertices(image_display, image_work, template, tW, tH):
    font_size = FONTSIZE_BASE * FONTSIZE_INIT
    font_thickness = THICKNESS_BASE * THICKNESS_INIT
    print("Slide for a desired label outcome, click on a vertex to remove," +\
-         " and press Return to proceed.")
+         " and press Enter to proceed.")
    image_display_c = image_display.copy()
    highlight_vertices(image_display_c, nodes, tW, tH)
    label_vertices(image_display_c, ref_pos, rel_pos, font_size, font_thickness)
@@ -996,6 +997,16 @@ def method3(image_work, nodes_center, radius):
    local_messages = ["method3"]
    E = []
    endpoints = get_endpoints(image_work, nodes_center, radius)
+   
+   # endpoint investigation
+   '''
+   image2 = get_binary_image(image_work.copy(), 0, 255)
+   for v in endpoints:
+      for e in v:
+         cv2.circle(image2, (e[0], e[1]), 5, 255)
+   cv2.imshow("image2", image2)
+   cv2.waitKey()
+   '''
    temp = []
    for i in range(len(endpoints)):
       temp.append(len(endpoints[i]))
@@ -1006,7 +1017,7 @@ def method3(image_work, nodes_center, radius):
                         radius * (0.5 + 0.1 * R_FACTOR_INIT), image_work)
    
    print("Slide for a desired value so that all the nodes are correctly " +\
-         "merged, and hit Return when finish.")
+         "merged, and hit Enter when finish.")
    image_bw = get_binary_image(image_work.copy(), 0, 255)
    image_bw2 = image_bw.copy()
    for n in nodes:
@@ -1081,7 +1092,6 @@ def correct_edges(image_work, nodes_center):
    global image_original, cont, removed_stack, image_stack, start_linking, E
    image_original = image_work.copy()
    removed_stack = []
-   image_stack = []
    start_linking = False
    for edge in E:
       des1 = edge[0]
@@ -1093,17 +1103,18 @@ def correct_edges(image_work, nodes_center):
       response = input("Do you want to correct the edge(s) manually?(y/n) ")
       if len(response) > 0:
          if (response[0] == 'y' or response[0] == 'Y'):
-            print(len(E))
+            image_stack = [image_work.copy()]
             initiate_UI(image_work, OUTPUT, remove, "Remove false edges in " +
-                        "the output window, and hit Return when finished.")
+                        "the output window, and hit Enter when finished.")
             image_work = image_original.copy()
             for edge in E:
                des1 = edge[0]
                des2 = edge[1]
                cv2.line(image_work, nodes_center[des1],\
                         nodes_center[des2], (0, 0, 255), 2)
+            image_stack = [image_work.copy()]
             initiate_UI(image_work, OUTPUT, add, "Add undetected edges in " +
-                        "the output window, and hit Return when finished.")
+                        "the output window, and hit Enter when finished.")
          elif response[0] != 'n' and response[0] != 'N':
             response = ""
             print("Invalis input.")
@@ -1183,13 +1194,16 @@ def start_regular_mode():
    nodes, nodes_center, rel_pos, font_size, font_thickness =\
       extract_vertices(graph.copy(), graph_gray.copy(), template, tW, tH)
    
+   '''
    # If neccesary, sort the vertices such that the order matches the given one.
    nodes = sort_vertices(nodes, graph.copy(), "Vertices with Labels", rel_pos,
                            font_size, font_thickness)
-   
+   '''
 
    # Process the image, then extract all the edges.
    graph_work = noise_reduction(graph_gray2, filename, nodes_center, radius)
+   # print("Performing image thinning, this may take some time....")
+   # graph_work = thin(get_binary_image(graph_gray2.copy(), THRESHOLD))
    hide_vertices(graph_work, nodes_center, radius)
    
    '''
@@ -1256,9 +1270,9 @@ def start_analysis_mode():
 ###############################################################################
 #                              Executing Codes                                #
 if __name__ == "__main__":
-   start_regular_mode()
+
    
-   '''
+   
    mode = ""
    while mode == "":
       mode = input("Start regular mode? (y/n) ")
@@ -1272,4 +1286,4 @@ if __name__ == "__main__":
          else:
             print("Cannot recognize input.")
             mode = ""
-   '''
+   
