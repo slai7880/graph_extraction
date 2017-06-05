@@ -420,6 +420,27 @@ def examine(mat, test):
             if test(p, A, B):
                 output.append((i, j))
     return output
+  
+def num_islands(window):
+   """Computes the number of connected components formed by pixels of 0 in a
+   3 by 3 window.
+   Parameters
+   ----------
+   window : numpy matrix of intergers
+      The size must be 3 by 3.
+   Returns
+   -------
+   int
+      The result.
+   """
+   def sink(i, j):
+      if 0 <= i < 3 and 0 <= j < 3 and window[i, j] == 0:
+         window[i, j] = 1
+         for (m, n) in [(i + 1, j), (i - 1, j), (i, j + 1), (i, j - 1)]:
+            sink(m, n)
+         return 1
+      return 0
+   return sum(sink(i, j) for i in range(3) for j in range(3))
 
 def thin(image_bin):
    """Thins a given binary image with zhang-seun's algorithm, assuming that in
@@ -468,25 +489,35 @@ def thin(image_bin):
    for y in range(mat.shape[0]):
       for x in range(mat.shape[1]):
          if mat[y, x] == 1:
+            '''
             n = get_neighborhood(mat, [x, y])
             nv = get_neighborhood_values(mat, [x, y])
             count = 0
-            for i in [1, 3, 5, 7]:
+            for i in [2, 4, 5, 7]:
                if nv[i] == 1:
                   count += 1
             if count > 2:
                mat[y, x] = 0
             elif count == 2:
                vec_sum = [0, 0]
-               for i in [1, 3, 5, 7]:
+               for i in [2, 4, 5, 7]:
                   if nv[i] == 1:
                      vec_sum = np.add(vec_sum, get_vector(n[0], n[i]))
                if vec_sum[0] != 0 or vec_sum[1] != 0:
-                  for i in [2, 4, 6, 8]:
+                  for i in [1, 3, 6, 8]:
                      if nv[i] == 1:
                         vec_sum = np.add(vec_sum, get_vector(n[0], n[i]))
                   if vec_sum[0] != 0 or vec_sum[1] != 0:
-                     mat[y, x] = 0
+                     mat[y, x] = 0   
+            '''
+            
+            
+            n = get_neighborhood(mat, [x, y])
+            nv = get_neighborhood_values(mat, [x, y])
+            count1 = num_islands(np.reshape(nv[1 : 5] + [1] + nv[5 :], [3, 3]))
+            count2 = num_islands(np.reshape(nv[1 : 5] + [0] + nv[5 :], [3, 3]))
+            if count2 >= count1:
+               mat[y, x] = 0
    return mat
 
 def thin2(image_bin): # for comparison
@@ -567,9 +598,9 @@ def get_neighborhood(image, location):
    p : List[[int, int]]
       Each element is a coordinate in the form [x, y]. The indices are
       associated with the relative positions in the neighborhood in this form:
-      8 1 2
-      7 0 3
-      6 5 4
+      1 2 3
+      4 0 5
+      6 7 8
       Additionally if the location happens to be on an edge or a corner of the
       image then [PLACE_HOLDER_INT, PLACE_HOLDER_INT] will be used for
       out-of-reach points.
@@ -577,22 +608,24 @@ def get_neighborhood(image, location):
    temp = [PLACE_HOLDER_INT, PLACE_HOLDER_INT]
    p = [temp[:]] * 9
    p[0] = location[:]
-   if location[1] - 1 >= 0:
-      p[1] = [location[0], location[1] - 1]
-      if location[0] + 1 < image.shape[1]:
-         p[2] = [location[0] + 1, location[1] - 1]
-   if location[0] + 1 < image.shape[1]:
-      p[3] = [location[0] + 1, location[1]]
-      if location[1] + 1 < image.shape[0]:
-         p[4] = [location[0] + 1, location[1] + 1]
-   if location[1] + 1 < image.shape[0]:
-      p[5] = [location[0], location[1] + 1]
-      if location[0] - 1 >= 0:
-         p[6] = [location[0] - 1, location[1] + 1]
-   if location[0] - 1 >= 0:
-      p[7] = [location[0] - 1, location[1]]
-      if location[1] - 1 >= 0:
-         p[8] = [location[0] - 1, location[1] - 1]
+   x = location[0]
+   y = location[1]
+   if y - 1 >= 0:
+      if x - 1 >= 0:
+         p[1] = [x - 1, y - 1]
+      p[2] = [x, y - 1]
+      if x + 1 < image.shape[1]:
+         p[3] = [x + 1, y - 1]
+   if x - 1 >= 0:
+      p[4] = [x - 1, y]
+   if x + 1 < image.shape[1]:
+      p[5] = [x + 1, y]
+   if y + 1 < image.shape[0]:
+      if x - 1 >= 0:
+         p[6] = [x - 1, y + 1]
+      p[7] = [x, y + 1]
+      if x + 1 < image.shape[1]:
+         p[8] = [x + 1, y + 1]
    return p
 
 
@@ -609,31 +642,34 @@ def get_neighborhood_values(image, location):
    p : List[int]
       A list of pixel values in the neighborhood. The indices are associated
       with the relative positions in the neighborhood in this form:
-      8 1 2
-      7 0 3
-      6 5 4
+      1 2 3
+      4 0 5
+      6 7 8
       Additionally is the current position happens to be on an edge or a corner
       of the image then PLACE_HOLDER_INT will be used to represent the pixel
       value.
    """
    p = [PLACE_HOLDER_INT] * 9
    p[0] = image[location[1], location[0]]
-   if location[1] - 1 >= 0:
-      p[1] = image[location[1] - 1, location[0]]
-      if location[0] + 1 < image.shape[1]:
-         p[2] = image[location[1] - 1, location[0] + 1]
-   if location[0] + 1 < image.shape[1]:
-      p[3] = image[location[1], location[0] + 1]
-      if location[1] + 1 < image.shape[0]:
-         p[4] = image[location[1] + 1, location[0] + 1]
-   if location[1] + 1 < image.shape[0]:
-      p[5] = image[location[1] + 1, location[0]]
-      if location[0] - 1 >= 0:
-         p[6] = image[location[1] + 1, location[0] - 1]
-   if location[0] - 1 >= 0:
-      p[7] = image[location[1], location[0] - 1]
-      if location[1] - 1 >= 0:
-         p[8] = image[location[1] - 1, location[0] - 1]
+   
+   x = location[0]
+   y = location[1]
+   if y - 1 >= 0:
+      if x - 1 >= 0:
+         p[1] = image[y - 1, x - 1]
+      p[2] = image[y - 1, x]
+      if x + 1 < image.shape[1]:
+         p[3] = image[y - 1, x + 1]
+   if x - 1 >= 0:
+      p[4] = image[y, x - 1]
+   if x + 1 < image.shape[1]:
+      p[5] = image[y, x + 1]
+   if y + 1 < image.shape[0]:
+      if x - 1 >= 0:
+         p[6] = image[y + 1, x - 1]
+      p[7] = image[y + 1, x]
+      if x + 1 < image.shape[1]:
+         p[8] = image[y + 1, x + 1]
    return p
 
 
@@ -648,9 +684,15 @@ def print_neighborhood_values(nv):
       6 5 4
       where each number is associated with the index in the list.
    """
+   print(str(nv[1]) + " " + str(nv[2]) + " " + str(nv[3]))
+   print(str(nv[4]) + " " + str(nv[0]) + " " + str(nv[5]))
+   print(str(nv[6]) + " " + str(nv[7]) + " " + str(nv[8]))
+   
+   '''
    print(str(nv[8]) + " " + str(nv[1]) + " " + str(nv[2]))
    print(str(nv[7]) + " " + str(nv[0]) + " " + str(nv[3]))
    print(str(nv[6]) + " " + str(nv[5]) + " " + str(nv[4]))
+   '''
 
 
 def get_vector(p_from, p_to):

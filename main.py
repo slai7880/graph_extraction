@@ -113,11 +113,11 @@ def remove_vertices(event, x, y, flags, image):
          top = removed_stack.pop()
          i = top[3]
          # nodes.append(top[0])
-         nodes = nodes[: i] + top[0] + nodes[i :]
+         nodes = nodes[: i] + [top[0]] + nodes[i :]
          # nodes_center.append(top[1])
-         nodes_center = nodes_center[: i] + top[1] + nodes_center[i :]
+         nodes_center = nodes_center[: i] + [top[1]] + nodes_center[i :]
          # ref_pos.append(top[2])
-         ref_pos = ref_pos[: i] + top[2] + ref_pos[i :]
+         ref_pos = ref_pos[: i] + [top[2]] + ref_pos[i :]
          image_c = image_stack.pop()
 
 # locate the remaining vertices   
@@ -1007,6 +1007,7 @@ def method3(image_work, nodes_center, radius):
    cv2.imshow("image2", image2)
    cv2.waitKey()
    '''
+   
    temp = []
    for i in range(len(endpoints)):
       temp.append(len(endpoints[i]))
@@ -1193,7 +1194,6 @@ def start_regular_mode():
    # nodes' upper-right corner.
    nodes, nodes_center, rel_pos, font_size, font_thickness =\
       extract_vertices(graph.copy(), graph_gray.copy(), template, tW, tH)
-   
    '''
    # If neccesary, sort the vertices such that the order matches the given one.
    nodes = sort_vertices(nodes, graph.copy(), "Vertices with Labels", rel_pos,
@@ -1287,3 +1287,5 @@ if __name__ == "__main__":
             print("Cannot recognize input.")
             mode = ""
    
+   
+   # 1-way vpn
