@@ -70,6 +70,11 @@ def crop(event, x, y, flags, image):
       tW = abs(ix - x)
       tH = abs(iy - y)
       template_num = ((min(iy, y), min(iy, y) + tH), (min(ix, x), min(ix, x) + tW))
+      template, (tH, tW), radius = process_template(image_init.copy(), template_num)
+      nodes = []
+      locate_vertices(4, cv2.cvtColor(image_init, cv2.COLOR_BGR2GRAY), template, tW, tH, nodes)
+      for n in nodes:
+         cv2.rectangle(image_c, n, (n[0] + tW, n[1] + tH), RECT_COLOR, RECT_THICKNESS)
    elif event == cv2.EVENT_RBUTTONUP:
       image_c = image_init.copy()
       template_num = None
@@ -1014,11 +1019,16 @@ def method3(image_work, nodes_center, radius):
    local_messages.append("lengths of endpoints: " + str(temp))
    nodes_real, nodes_unreal = construct_network3(image_work, nodes_center,\
                                                    endpoints)
+   image_temp = get_binary_image(image_work.copy(), 0, 255)
+   for n in nodes_real + nodes_unreal:
+      cv2.circle(image_temp, (int(n.location[0]), int(n.location[1])), 5, 255)
+   cv2.imshow("image_temp", image_temp)
+   cv2.waitKey(1)
    nodes = merge_nodes(nodes_real, nodes_unreal,\
                         radius * (0.5 + 0.1 * R_FACTOR_INIT), image_work)
    
-   print("Slide for a desired value so that all the nodes are correctly " +\
-         "merged, and hit Enter when finish.")
+   print("Slide for a desired value so that there is only one circle at " +\
+         "each intersection or vertex. Check tutorial for more information.")
    image_bw = get_binary_image(image_work.copy(), 0, 255)
    image_bw2 = image_bw.copy()
    for n in nodes:
@@ -1186,14 +1196,14 @@ def start_regular_mode():
       cv2.destroyWindow(GRAPH)
       initiate_UI(graph2, GRAPH, crop,\
          "Please crop an example of the vertices in " + GRAPH + " window.")
-
+   cv2.destroyWindow(GRAPH)
    # Process the template.
    template, (tH, tW), radius = process_template(graph2, template_num)
    
    # Find all the vertices. In particular variable nodes stores a list of
    # nodes' upper-right corner.
    nodes, nodes_center, rel_pos, font_size, font_thickness =\
-      extract_vertices(graph.copy(), graph_gray.copy(), template, tW, tH)
+      extract_vertices(graph.copy(), graph_gray2.copy(), template, tW, tH)
    '''
    # If neccesary, sort the vertices such that the order matches the given one.
    nodes = sort_vertices(nodes, graph.copy(), "Vertices with Labels", rel_pos,
@@ -1230,8 +1240,8 @@ def start_analysis_mode():
    """In this mode, the input will be taken from a previous data source.
    """
    global E, nodes_center
-   graph = cv2.imread("graph_input/engine.jpg")
-   graph_work, nodes_center, radius = load("engine")
+   graph = cv2.imread("graph_input/P72A.jpg")
+   graph_work, nodes_center, radius = load("P72A")
    
    
    hide_vertices(graph_work, nodes_center, radius)
@@ -1289,3 +1299,4 @@ if __name__ == "__main__":
    
    
    # 1-way vpn
+   # epstopdf
